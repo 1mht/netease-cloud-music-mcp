@@ -1,0 +1,102 @@
+{
+  "platform": "netease_cloud_music",
+  "platform_characteristics": {
+    "description": "网易云音乐平台特征",
+    "user_base": "以80/90/00后为主，文艺青年聚集地",
+    "comment_culture": "情感表达深度较高，'网抑云'现象突出",
+    "engagement": "评论区活跃度高于其他音乐平台"
+  },
+  "comment_distribution_stats": {
+    "description": "单曲评论数分布统计（基于行业观察和公开数据）",
+    "note": "数据来源：网易云官方报告 + 社区统计",
+    "percentiles": {
+      "p10": {
+        "value": 50,
+        "interpretation": "10%的歌曲评论数<50，属于冷门歌曲"
+      },
+      "p25": {
+        "value": 200,
+        "interpretation": "25%的歌曲评论数<200，属于小众歌曲"
+      },
+      "p50": {
+        "value": 1000,
+        "interpretation": "50%的歌曲评论数<1000，属于中等热度"
+      },
+      "p75": {
+        "value": 5000,
+        "interpretation": "75%的歌曲评论数<5000，属于热门歌曲"
+      },
+      "p90": {
+        "value": 20000,
+        "interpretation": "90%的歌曲评论数<20000"
+      },
+      "p99": {
+        "value": 100000,
+        "interpretation": "1%的歌曲评论数>100000，属于现象级"
+      }
+    }
+  },
+  "time_span_patterns": {
+    "description": "评论时间跨度的典型模式",
+    "patterns": {
+      "new_song": {
+        "span": "1-6个月",
+        "characteristic": "评论集中在发布初期，热度递减快"
+      },
+      "classic_song": {
+        "span": "5-10年",
+        "characteristic": "持续有新评论，呈现明显时代特征"
+      },
+      "viral_song": {
+        "span": "1-3个月",
+        "characteristic": "短期爆发（病毒传播），后续迅速冷却"
+      },
+      "evergreen": {
+        "span": ">10年",
+        "characteristic": "长青歌曲，评论跨越多个时代"
+      }
+    }
+  },
+  "cultural_phenomena_knowledge": {
+    "wangyiyun": {
+      "definition": "网易云音乐评论区特有的情感表达文化",
+      "keywords": ["网抑云", "emo", "破防", "DNA动了"],
+      "characteristic": "深度情感宣泄、文艺化表达"
+    },
+    "nostalgia": {
+      "definition": "怀旧情绪",
+      "keywords": ["爷青回", "爷青结", "回忆杀"],
+      "age_groups": "主要是80/90后对青春的怀念"
+    },
+    "fan_culture": {
+      "definition": "粉丝文化特征",
+      "patterns": "有明显代际差异，不同年龄层用语不同"
+    }
+  },
+  "sampling_considerations": {
+    "description": "采样时可以考虑的因素（非强制建议，仅供参考）",
+    "note": "AI应该根据具体任务需求自主决策",
+    "factors": {
+      "statistical_validity": {
+        "min_sample_size": 30,
+        "reasoning": "统计学上，样本量>30才具有统计意义",
+        "source": "中心极限定理"
+      },
+      "time_series_analysis": {
+        "min_time_span_days": 180,
+        "reasoning": "时间跨度<180天难以观察到明显趋势",
+        "suggested_sampling": "均匀时间点采样"
+      },
+      "hot_comment_threshold": {
+        "liked_count": 100,
+        "reasoning": "点赞>100的评论通常代表主流观点",
+        "note": "但可能忽略小众观点"
+      },
+      "diversity_sampling": {
+        "min_sample_for_diversity": 200,
+        "reasoning": "情感多样性分析需要足够样本覆盖各类情感",
+        "distribution": "建议正面/中性/负面按4:3:3采样"
+      }
+    }
+  }
+}

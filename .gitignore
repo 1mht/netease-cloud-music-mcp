@@ -1,0 +1,30 @@
+# Byte-compiled
+__pycache__/
+*.py[cod]
+*$py.class
+
+# Database
+*.db
+data/*
+!data/.gitkeep
+
+# Cookie/Config
+cookie.txt
+*.cookie
+.env
+
+# IDE
+.idea/
+.vscode/
+*.swp
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Logs
+*.log
+logs/
+
+# Test
+.pytest_cache/

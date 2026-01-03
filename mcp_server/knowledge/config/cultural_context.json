@@ -1,0 +1,123 @@
+{
+  "platform_slang": {
+    "description": "网易云音乐评论区常用黑话/网络用语",
+    "keywords": {
+      "网抑云": {
+        "definition": "指网易云音乐评论区常见的伤感、抑郁情绪表达",
+        "sentiment": "negative",
+        "context": "用户在深夜听歌时容易emo"
+      },
+      "爷青回": {
+        "definition": "爷的青春回来了，表达对旧时光的怀念",
+        "sentiment": "positive",
+        "context": "听到童年/青春期的歌曲"
+      },
+      "爷青结": {
+        "definition": "爷的青春结束了，表达失落和告别",
+        "sentiment": "negative",
+        "context": "偶像退役、IP完结等"
+      },
+      "emo": {
+        "definition": "情绪化、伤感的状态",
+        "sentiment": "negative",
+        "context": "深夜、失恋、压力大时"
+      },
+      "破防": {
+        "definition": "心理防线被突破，被触动",
+        "sentiment": "neutral",
+        "context": "听到触动心灵的歌词或旋律"
+      },
+      "DNA动了": {
+        "definition": "听到熟悉的旋律，身体本能反应",
+        "sentiment": "positive",
+        "context": "经典前奏、洗脑神曲"
+      },
+      "单曲循环": {
+        "definition": "反复播放同一首歌",
+        "sentiment": "neutral",
+        "context": "特别喜欢或特别有共鸣"
+      },
+      "神曲": {
+        "definition": "传唱度极高、影响力大的歌曲",
+        "sentiment": "positive",
+        "context": "广场舞、短视频BGM"
+      }
+    }
+  },
+  "artist_backgrounds": {
+    "description": "艺术家文化背景知识库（可扩展）",
+    "artists": {
+      "周杰伦": {
+        "era": "2000年代华语乐坛巅峰",
+        "fan_base": "80/90后为主，横跨多代",
+        "cultural_impact": "定义了一代人的青春回忆",
+        "representative_songs": ["晴天", "青花瓷", "稻香", "夜曲"],
+        "comment_characteristics": "怀旧情绪浓厚，'爷青回'高频"
+      },
+      "陈奕迅": {
+        "era": "1990-2020持续活跃",
+        "fan_base": "跨年龄层，文艺青年喜爱",
+        "cultural_impact": "情歌之王，深度情感表达",
+        "representative_songs": ["十年", "浮夸", "好久不见", "K歌之王"],
+        "comment_characteristics": "情感共鸣强，失恋疗伤"
+      },
+      "薛之谦": {
+        "era": "2015-2020二次走红",
+        "fan_base": "90/00后为主",
+        "cultural_impact": "网络时代崛起的歌手",
+        "representative_songs": ["演员", "刚刚好", "丑八怪"],
+        "comment_characteristics": "段子手形象，评论区互动性强"
+      }
+    }
+  },
+  "song_era_markers": {
+    "description": "歌曲年代标记（帮助AI理解时代背景）",
+    "eras": {
+      "1980s-1990s": {
+        "labels": ["经典老歌", "怀旧", "父母辈"],
+        "representative_artists": ["邓丽君", "张学友", "beyond"]
+      },
+      "2000s-2010s": {
+        "labels": ["80/90后青春", "经典", "回忆杀"],
+        "representative_artists": ["周杰伦", "陈奕迅", "林俊杰", "孙燕姿"]
+      },
+      "2010s-2020s": {
+        "labels": ["00后主流", "网络歌曲", "短视频BGM"],
+        "representative_artists": ["薛之谦", "毛不易", "隔壁老樊"]
+      },
+      "2020s-now": {
+        "labels": ["新生代", "流行", "当下"],
+        "representative_artists": ["刘宇宁", "周深", "88LIEN"]
+      }
+    }
+  },
+  "comment_culture_patterns": {
+    "description": "评论区文化模式",
+    "patterns": {
+      "story_telling": {
+        "description": "讲故事型评论",
+        "example": "2019年听这首歌时我还在读大学...",
+        "frequency": "高频",
+        "sentiment_tendency": "怀旧、感慨"
+      },
+      "lyric_quoting": {
+        "description": "引用歌词",
+        "example": "把回忆拼好给你",
+        "frequency": "极高频",
+        "sentiment_tendency": "与歌曲情感一致"
+      },
+      "time_stamping": {
+        "description": "时间戳打卡",
+        "example": "2025年还在听的+1",
+        "frequency": "高频",
+        "sentiment_tendency": "正面、陪伴感"
+      },
+      "self_deprecating": {
+        "description": "自嘲式emo",
+        "example": "又是听歌流泪的夜晚",
+        "frequency": "中高频",
+        "sentiment_tendency": "负面但带调侃"
+      }
+    }
+  }
+}
