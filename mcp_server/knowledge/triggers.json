@@ -1,0 +1,176 @@
+{
+  "version": "0.7.3",
+  "description": "知识注解触发规则配置",
+  "last_updated": "2026-01-04",
+
+  "keyword_triggers": [
+    {
+      "id": "wangyiyun",
+      "keywords": ["网抑云", "抑云"],
+      "min_count": 5,
+      "note": "2020年'网抑云'现象影响评论区风格，可能导致情感偏负面或出现反讽评论",
+      "source": "网易云社区现象 (2020年)",
+      "confidence": "high",
+      "category": "cultural_phenomenon"
+    },
+    {
+      "id": "yqh",
+      "keywords": ["爷青回", "爷的青春"],
+      "min_count": 10,
+      "note": "怀旧情绪流行语，反映用户年龄层和文化认同",
+      "source": "网络流行语",
+      "confidence": "medium",
+      "category": "cultural_phenomenon"
+    },
+    {
+      "id": "dna",
+      "keywords": ["DNA动了", "DNA"],
+      "min_count": 3,
+      "note": "表示被触动产生共鸣，2021年流行语",
+      "source": "网络流行语",
+      "confidence": "medium",
+      "category": "cultural_phenomenon"
+    },
+    {
+      "id": "yyds",
+      "keywords": ["yyds", "永远的神"],
+      "min_count": 5,
+      "note": "网络流行语，表示极高评价，2020-2021年流行",
+      "source": "网络流行语",
+      "confidence": "medium",
+      "category": "cultural_phenomenon"
+    },
+    {
+      "id": "pofang",
+      "keywords": ["破防", "破大防"],
+      "min_count": 5,
+      "note": "表示情感被触动，2021年流行语",
+      "source": "网络流行语",
+      "confidence": "medium",
+      "category": "cultural_phenomenon"
+    }
+  ],
+
+  "temporal_triggers": [
+    {
+      "id": "year_2020_drop",
+      "condition": "year_2020_sentiment_drop",
+      "threshold": -0.1,
+      "note": "2020年情感下降可能与疫情期间社会情绪或'网抑云'现象相关",
+      "source": "社会背景分析",
+      "confidence": "medium",
+      "category": "temporal_context"
+    },
+    {
+      "id": "long_tail",
+      "condition": "long_tail_nostalgia",
+      "threshold_years": 5,
+      "note": "老歌评论区以怀旧情绪为主，反映歌曲的时代意义和用户成长记忆",
+      "source": "音乐社区规律",
+      "confidence": "high",
+      "category": "temporal_context"
+    },
+    {
+      "id": "recent_revival",
+      "condition": "recent_revival",
+      "threshold_ratio": 1.5,
+      "note": "近期评论量增加，可能是因为翻唱、综艺、短视频等事件引发关注",
+      "source": "传播规律",
+      "confidence": "medium",
+      "category": "temporal_context"
+    }
+  ],
+
+  "content_triggers": [
+    {
+      "id": "nostalgia",
+      "condition": "nostalgia_dominant",
+      "threshold": 0.3,
+      "note": "怀旧主题占比高，评论区以追忆青春为主，情感表达可能偏感性",
+      "source": "内容分析",
+      "confidence": "high",
+      "category": "content_pattern"
+    },
+    {
+      "id": "story_heavy",
+      "condition": "high_story_ratio",
+      "threshold": 0.2,
+      "note": "故事型评论占比高，用户倾向分享个人经历，长评质量可能较高",
+      "source": "结构分析",
+      "confidence": "medium",
+      "category": "content_pattern"
+    },
+    {
+      "id": "music_discussion",
+      "condition": "music_theme_dominant",
+      "threshold": 0.25,
+      "note": "音乐评价主题占主导，评论区讨论较为专业",
+      "source": "内容分析",
+      "confidence": "medium",
+      "category": "content_pattern"
+    }
+  ],
+
+  "social_triggers": [
+    {
+      "id": "concentration",
+      "condition": "high_engagement_concentration",
+      "threshold": 0.7,
+      "note": "互动高度集中（头部评论获得大多数点赞），存在'抢热评'文化",
+      "source": "社交分析",
+      "confidence": "high",
+      "category": "social_pattern"
+    },
+    {
+      "id": "viral",
+      "condition": "has_viral_comments",
+      "threshold": 3,
+      "note": "存在多条病毒式传播评论（>1万赞），评论区有'出圈'内容",
+      "source": "社交分析",
+      "confidence": "high",
+      "category": "social_pattern"
+    }
+  ],
+
+  "structural_triggers": [
+    {
+      "id": "hot_negative",
+      "condition": "hot_sentiment_lower",
+      "threshold": -0.1,
+      "note": "热评情感低于普通评论，可能因为强烈情感更易引发共鸣获得点赞",
+      "source": "结构分析",
+      "confidence": "high",
+      "category": "structural_pattern"
+    }
+  ],
+
+  "linguistic_triggers": [
+    {
+      "id": "meme_heavy",
+      "condition": "high_meme_ratio",
+      "threshold": 0.15,
+      "note": "梗/流行语评论占比高，评论区受网络文化影响较深",
+      "source": "评论类型分析",
+      "confidence": "medium",
+      "category": "linguistic_pattern"
+    },
+    {
+      "id": "story_rich",
+      "condition": "high_story_ratio",
+      "threshold": 0.20,
+      "note": "故事型评论占比高，用户倾向分享个人经历，评论区内容质量较高",
+      "source": "评论类型分析",
+      "confidence": "high",
+      "category": "linguistic_pattern"
+    },
+    {
+      "id": "filler_heavy",
+      "condition": "high_filler_ratio",
+      "threshold": 0.20,
+      "note": "水评占比较高，评论区整体质量偏低",
+      "source": "评论类型分析",
+      "confidence": "medium",
+      "category": "linguistic_pattern"
+    }
+  ]
+}

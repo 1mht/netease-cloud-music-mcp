@@ -222,10 +222,10 @@ def crawl_all_comments(song_id: str, confirm: bool = True, db_path: str = "data/
 
     示例对话：
         用户: "我想爬取《孤勇者》的全部评论"
-        Claude: [调用 crawl_all_comments(song_id, confirm=True)]
-        Claude: "这首歌有 30 万条评论，完整爬取需要约 6 小时。是否继续？"
+        → 调用 crawl_all_comments(song_id, confirm=True)
+        → 返回: "这首歌有 30 万条评论，完整爬取需要约 6 小时。是否继续？"
         用户: "是的，开始吧"
-        Claude: [调用 crawl_all_comments(song_id, confirm=False)]
+        → 调用 crawl_all_comments(song_id, confirm=False)
         → 开始爬取，实时显示进度
     """
     # 导入放在顶部可能导致循环依赖，所以在函数内导入

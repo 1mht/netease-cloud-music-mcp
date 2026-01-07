@@ -1,100 +1,95 @@
-# NetEase Cloud Music MCP
+# NetEase Cloud Music MCP Server
 
-> 网易云音乐评论分析 MCP 工具
+基于 MCP 协议的网易云音乐评论区分析工具。
 
-## 功能
+## 核心问题
 
-- **情感分析** - 评论情感分类，支持内部自动采样
-- **时间线分析** - 追踪评论区情绪随时间变化
-- **歌曲对比** - 多维度 PK 对比两首歌的评论
-- **关键词提取** - 词云生成、主题聚类
-- **可视化** - 情感分布图、趋势图
+> **如何让 AI 理解一个有几十万条评论的评论区？**
+
+传统做法是全量爬取 + 统计分析，但：
+- 热门歌曲几十万评论，全爬要数小时
+- 统计结果 AI 看不懂，无法验证
+- 情感算法经常误判（"我恨这首歌让我哭" 被判负面）
+
+## 解决方案
+
+**不追求"大而全"，而是"少而精"**——用有限样本让 AI 做可靠推断。
+
+### 1. 智能采样
+
+固定结构：**热评(15) + 最新(offset) + 历史(cursor)**
+
+| 级别 | 数量 | 场景 |
+|------|------|------|
+| quick | 200 | 快速预览 |
+| standard | 600 | 日常分析 |
+| deep | 1000 | 深度研究 |
+
+根据歌曲年龄自动调整比例：新歌侧重最新评论，老歌侧重历史覆盖。
+
+### 2. 分层加载
+
+```
+Layer 0: 数据概览 → 有多少评论、覆盖几年
+Layer 1: 六维度信号 → 情感、主题、趋势（量化指标）
+Layer 2: 验证样本 → 锚点+对比样本（供 AI 验证）
+Layer 3: 原始评论 → 按需筛选
+```
+
+AI 按需加载，不一次性获取所有数据。
+
+### 3. 强制流程
+
+数据量 <100 条时阻断分析，要求先采样。防止 AI 跳过关键步骤。
 
 ## 快速开始
 
-### 1. 安装依赖
+### 安装
 
 ```bash
-git clone https://github.com/1mht/netease-cloud-music-mcp.git
-cd netease-cloud-music-mcp
 pip install -r requirements.txt
 ```
 
-### 2. 配置 MCP 客户端
+### 配置 Claude Desktop
 
-本项目兼容所有支持 MCP 协议的客户端。
-
-#### Claude Desktop
-
-编辑配置文件（Windows: `%APPDATA%\Claude\claude_desktop_config.json`）：
+`claude_desktop_config.json`:
 
 ```json
 {
   "mcpServers": {
     "netease-music": {
       "command": "python",
-      "args": ["-m", "mcp_server.server"],
-      "cwd": "/path/to/netease-cloud-music-mcp"
+      "args": ["path/to/mcp_server/server.py"]
     }
   }
 }
 ```
 
-#### Claude Code (CLI)
-
-```bash
-claude mcp add netease-music -- python -m mcp_server.server
-```
-
-### 3. 开始使用
+### 使用
 
 ```
-你：搜索周杰伦的晴天
-Claude：[展示搜索结果，等待你选择]
-
-你：选第1首
-Claude：[确认选择]
-
-你：分析这首歌的评论情感
-Claude：[返回情感分析结果]
+"帮我分析《晴天》的评论区"
 ```
 
 ## 工具列表
 
-| 类别 | 工具 | 功能 |
-|------|------|------|
-| 搜索 | `search_songs_tool` | 搜索歌曲 |
-| 搜索 | `confirm_song_selection_tool` | 确认选择 |
-| 分析 | `analyze_sentiment_tool` | 情感分析 |
-| 分析 | `analyze_sentiment_timeline_tool` | 情感时间线 |
-| 分析 | `compare_songs_tool` | 歌曲 PK 对比 |
-| 分析 | `extract_keywords_tool` | 关键词提取 |
-| 分析 | `cluster_comments_tool` | 主题聚类 |
-| 可视化 | `visualize_sentiment_tool` | 情感分布图 |
-| 可视化 | `generate_wordcloud_tool` | 词云图 |
+| 工具 | 功能 |
+|------|------|
+| `search_songs_tool` | 搜索 |
+| `confirm_song_selection_tool` | 确认 |
+| `add_song_to_database` | 入库 |
+| `sample_comments_tool` | 采样 |
+| `get_analysis_overview_tool` | Layer 0 |
+| `get_analysis_signals_tool` | Layer 1 |
+| `get_analysis_samples_tool` | Layer 2 |
+| `get_raw_comments_v2_tool` | Layer 3 |
 
-## 技术特点
+## 技术亮点
 
-- **内部自动采样** - 分析工具自动检测数据不足并触发采样
-- **分层采样策略** - 热评 + 最新 + 历史 cursor 时间跳转
-- **两步搜索架构** - 强制用户确认选择，避免 AI 自作主张
-
-## 项目结构
-
-```
-netease-cloud-music-mcp/
-├── mcp_server/              # MCP 服务器
-│   ├── server.py            # 主入口
-│   ├── tools/               # 工具模块
-│   └── knowledge/           # 知识库
-├── netease_cloud_music/     # 网易云 API
-└── docs/                    # 文档
-```
+- **weapi cursor**：突破 offset 限制，可跳转任意历史时间
+- **对比样本**：高赞低分评论，发现算法盲区
+- **六维度分析**：情感/内容/时间/结构/社交/语言
 
 ## License
 
 MIT
-
-## Author
-
-1mht
