@@ -1,4 +1,7 @@
 # -*- coding: utf-8 -*-
+import sys
+import builtins as _builtins
+
 import time
 import random
 import requests
@@ -6,6 +9,18 @@ from utils import create_weapi_params
 from db_utils import save_comments
 from database import init_db
 import os
+
+
+def _safe_print(*args, **kwargs):
+    """避免污染 STDIO 协议输出：默认将 print 输出到 stderr。"""
+    if "file" not in kwargs:
+        kwargs["file"] = sys.stderr
+    return _builtins.print(*args, **kwargs)
+
+
+# 仅影响本模块内的 print() 调用
+print = _safe_print
+
 
 # ============================================================
 # 配置 & 熔断机制 (Circuit Breaker) - Andrej Philosophy
@@ -16,23 +31,25 @@ SLEEP_MIN = 0.5
 SLEEP_MAX = 1.5
 
 # 熔断配置
-MAX_CONSECUTIVE_ERRORS = 5    # 连续错误N次后熔断
-MAX_RUNTIME_SECONDS = 7200    # 最大运行时间2小时 (防止无限循环)
-CHECKPOINT_INTERVAL = 100     # 每100页输出一次检查点
+MAX_CONSECUTIVE_ERRORS = 5  # 连续错误N次后熔断
+MAX_RUNTIME_SECONDS = 7200  # 最大运行时间2小时 (防止无限循环)
+CHECKPOINT_INTERVAL = 100  # 每100页输出一次检查点
+
 
 def load_cookie():
     """从 cookie.txt 加载 Cookie"""
     try:
-        cookie_path = os.path.join(os.path.dirname(__file__), 'cookie.txt')
+        cookie_path = os.path.join(os.path.dirname(__file__), "cookie.txt")
         if os.path.exists(cookie_path):
-            with open(cookie_path, 'r', encoding='utf-8') as f:
+            with open(cookie_path, "r", encoding="utf-8") as f:
                 content = f.read().strip()
                 # 忽略注释行
-                if content and not content.startswith('#'):
+                if content and not content.startswith("#"):
                     return content
     except Exception as e:
         print(f"[警告] 读取 Cookie 失败: {e}")
     return None
+
 
 def crawl_all_comments_task(song_id: str, db_path: str, detect_deletions: bool = False):
     """
@@ -65,13 +82,17 @@ def crawl_all_comments_task(song_id: str, db_path: str, detect_deletions: bool =
             # ===== 熔断检查1: 运行时间 =====
             elapsed_seconds = time.time() - start_time
             if elapsed_seconds > MAX_RUNTIME_SECONDS:
-                print(f"\n[熔断] 已运行 {elapsed_seconds/60:.1f} 分钟，超过最大时间限制 {MAX_RUNTIME_SECONDS/60:.0f} 分钟")
+                print(
+                    f"\n[熔断] 已运行 {elapsed_seconds / 60:.1f} 分钟，超过最大时间限制 {MAX_RUNTIME_SECONDS / 60:.0f} 分钟"
+                )
                 print(f"[熔断] 已保存 {total_comments} 条评论，任务中断")
                 break
 
             # ===== 检查点输出 =====
             if page % CHECKPOINT_INTERVAL == 0:
-                print(f"\n[检查点] 第 {page} 页 | 已爬取 {total_comments} 条 | 运行 {elapsed_seconds/60:.1f} 分钟")
+                print(
+                    f"\n[检查点] 第 {page} 页 | 已爬取 {total_comments} 条 | 运行 {elapsed_seconds / 60:.1f} 分钟"
+                )
             limit = PAGE_SIZE
             offset = (page - 1) * limit
 
@@ -79,22 +100,22 @@ def crawl_all_comments_task(song_id: str, db_path: str, detect_deletions: bool =
             url = f"http://music.163.com/api/v1/resource/comments/R_SO_4_{song_id}?limit={limit}&offset={offset}"
 
             headers = {
-                'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
+                "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36",
             }
             if user_cookie:
-                headers['Cookie'] = user_cookie
+                headers["Cookie"] = user_cookie
 
             # 发送请求
             try:
                 resp = requests.get(url, headers=headers, timeout=10)
                 res_data = resp.json()
 
-                if res_data.get('code') != 200:
+                if res_data.get("code") != 200:
                     print(f"[错误] API 返回非 200: {res_data.get('code')}")
                     break
 
                 # V1 接口的结构稍有不同，直接在根部
-                comments = res_data.get('comments', [])
+                comments = res_data.get("comments", [])
 
                 if not comments:
                     print(f"[任务结束] 第 {page} 页无更多评论。")
@@ -112,17 +133,21 @@ def crawl_all_comments_task(song_id: str, db_path: str, detect_deletions: bool =
                 # ===== 成功时重置连续错误计数 =====
                 consecutive_errors = 0
 
-                print(f"[进度] song_id:{song_id} -- 第 {page} 页抓取完成，本页 {count} 条，累计 {total_comments} 条。")
+                print(
+                    f"[进度] song_id:{song_id} -- 第 {page} 页抓取完成，本页 {count} 条，累计 {total_comments} 条。"
+                )
 
                 # 检查是否还有更多
-                has_more = res_data.get('more', False)
+                has_more = res_data.get("more", False)
                 if not has_more:
                     print("[任务结束] 已到达最后一页。")
                     break
 
             except Exception as e:
                 consecutive_errors += 1
-                print(f"[异常] 请求第 {page} 页失败 ({consecutive_errors}/{MAX_CONSECUTIVE_ERRORS}): {e}")
+                print(
+                    f"[异常] 请求第 {page} 页失败 ({consecutive_errors}/{MAX_CONSECUTIVE_ERRORS}): {e}"
+                )
 
                 # ===== 熔断检查2: 连续错误 =====
                 if consecutive_errors >= MAX_CONSECUTIVE_ERRORS:
@@ -152,9 +177,10 @@ def crawl_all_comments_task(song_id: str, db_path: str, detect_deletions: bool =
         session.close()
         print(f"[后台任务] 歌曲 {song_id} 抓取结束。总计入库: {total_comments} 条。")
 
+
 if __name__ == "__main__":
     # 测试代码
     # 注意：需要确保数据库文件路径正确
-    db_file = os.path.join(os.path.dirname(__file__), '../data/music_data_v2.db')
-    db_uri = f'sqlite:///{db_file}'
+    db_file = os.path.join(os.path.dirname(__file__), "../data/music_data_v2.db")
+    db_uri = f"sqlite:///{db_file}"
     crawl_all_comments_task("1481047138", db_uri)

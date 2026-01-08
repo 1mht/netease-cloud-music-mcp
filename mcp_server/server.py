@@ -2,7 +2,7 @@
 """
 NetEase Music Data Science MCP Server (v0.8.7)
 
-核心工具 (8个):
+核心工具 (9个):
 1. search_songs_tool - 搜索歌曲
 2. confirm_song_selection_tool - 确认选择
 3. add_song_to_database - 入库
@@ -10,12 +10,13 @@ NetEase Music Data Science MCP Server (v0.8.7)
 5. get_analysis_overview_tool - Layer 0: 数据概览
 6. get_analysis_signals_tool - Layer 1: 六维度信号
 7. get_analysis_samples_tool - Layer 2: 验证样本
-8. get_raw_comments_v2_tool - Layer 3: 原始评论
+8. search_comments_by_keyword_tool - Layer 2.5: 关键词检索（DB内验证）
+9. get_raw_comments_v2_tool - Layer 3: 原始评论
 
 v0.8.7 设计:
 - 两个独立系统：采样系统 + 分析系统
 - 采样：三级统一接口 (quick/standard/deep)
-- 分析：渐进式 Layer 0→1→2→3
+- 分析：渐进式 Layer 0→1→2→2.5→3
 
 Author: 1mht
 Date: 2025-12-27
@@ -36,8 +37,7 @@ if project_root not in sys.path:
 
 # 配置日志
 logging.basicConfig(
-    level=logging.INFO,
-    format='%(asctime)s - %(name)s - %(levelname)s - %(message)s'
+    level=logging.INFO, format="%(asctime)s - %(name)s - %(levelname)s - %(message)s"
 )
 logger = logging.getLogger(__name__)
 
@@ -45,8 +45,8 @@ logger = logging.getLogger(__name__)
 try:
     from fastmcp import FastMCP
 except ImportError:
-    print("错误: 未安装 fastmcp")
-    print("请运行: pip install fastmcp")
+    sys.stderr.write("错误: 未安装 fastmcp\n")
+    sys.stderr.write("请运行: pip install fastmcp\n")
     sys.exit(1)
 
 # ============================================================
@@ -57,10 +57,11 @@ from tools.data_collection import add_song_basic
 
 # 分层分析工具
 from tools.layered_analysis import (
-    get_analysis_overview,     # Layer 0
-    get_analysis_signals,      # Layer 1
-    get_analysis_samples,      # Layer 2
-    get_raw_comments_v2        # Layer 3
+    get_analysis_overview,  # Layer 0
+    get_analysis_signals,  # Layer 1
+    get_analysis_samples,  # Layer 2
+    search_comments_by_keyword,  # Layer 2.5
+    get_raw_comments_v2,  # Layer 3
 )
 
 # 创建 MCP 服务器实例
@@ -72,6 +73,7 @@ logger.info("NetEase Music MCP Server v0.8.7 正在初始化...")
 # ============================================================
 # 工具 1: 搜索歌曲
 # ============================================================
+
 
 @mcp.tool()
 def search_songs_tool(keyword: str, limit: int = 10) -> dict:
@@ -100,6 +102,7 @@ def search_songs_tool(keyword: str, limit: int = 10) -> dict:
 # 工具 2: 确认选择
 # ============================================================
 
+
 @mcp.tool()
 def confirm_song_selection_tool(session_id: str, choice_number: int) -> dict:
     """确认用户选择的歌曲，返回 song_id。
@@ -124,6 +127,7 @@ def confirm_song_selection_tool(session_id: str, choice_number: int) -> dict:
 # 工具 3: 入库
 # ============================================================
 
+
 @mcp.tool()
 def add_song_to_database(song_id: str) -> dict:
     """将歌曲添加到数据库（元数据 + 热门评论 + 最新评论）。
@@ -146,6 +150,7 @@ def add_song_to_database(song_id: str) -> dict:
 # ============================================================
 # 工具 4: 采样 (v0.8.7 三级统一接口)
 # ============================================================
+
 
 @mcp.tool()
 def sample_comments_tool(song_id: str, level: str = "standard") -> dict:
@@ -183,7 +188,9 @@ def sample_comments_tool(song_id: str, level: str = "standard") -> dict:
 
     try:
         from mcp_server.tools.sampling_v6 import sample_comments_v6
-        from mcp_server.tools.pagination_sampling import get_real_comments_count_from_api
+        from mcp_server.tools.pagination_sampling import (
+            get_real_comments_count_from_api,
+        )
 
         # 获取 API 总数
         api_result = get_real_comments_count_from_api(song_id)
@@ -193,31 +200,25 @@ def sample_comments_tool(song_id: str, level: str = "standard") -> dict:
             return {
                 "status": "error",
                 "message": "无法获取 API 评论总数",
-                "song_id": song_id
+                "song_id": song_id,
             }
 
         # 执行采样
         result = sample_comments_v6(
-            song_id=song_id,
-            api_total=api_total,
-            level=level,
-            save_to_db=True
+            song_id=song_id, api_total=api_total, level=level, save_to_db=True
         )
 
         return result
 
     except Exception as e:
         logger.error(f"采样失败: {e}", exc_info=True)
-        return {
-            "status": "error",
-            "message": str(e),
-            "song_id": song_id
-        }
+        return {"status": "error", "message": str(e), "song_id": song_id}
 
 
 # ============================================================
 # 工具 5: Layer 0 数据概览
 # ============================================================
+
 
 @mcp.tool()
 def get_analysis_overview_tool(song_id: str) -> dict:
@@ -252,6 +253,7 @@ def get_analysis_overview_tool(song_id: str) -> dict:
 # ============================================================
 # 工具 6: Layer 1 六维度信号
 # ============================================================
+
 
 @mcp.tool()
 def get_analysis_signals_tool(song_id: str) -> dict:
@@ -288,6 +290,7 @@ def get_analysis_signals_tool(song_id: str) -> dict:
 # ============================================================
 # 工具 7: Layer 2 验证样本
 # ============================================================
+
 
 @mcp.tool()
 def get_analysis_samples_tool(song_id: str) -> dict:
@@ -327,15 +330,53 @@ def get_analysis_samples_tool(song_id: str) -> dict:
 
 
 # ============================================================
-# 工具 8: Layer 3 原始评论
+# 工具 8: Layer 2.5 关键词检索
 # ============================================================
+
+
+@mcp.tool()
+def search_comments_by_keyword_tool(
+    song_id: str,
+    keyword: str,
+    limit: int = 20,
+    min_likes: int = 0,
+) -> dict:
+    """【Layer 2.5】DB内关键词检索 - 用于验证 Layer 1 的关键词/主题信号
+
+    设计目标：
+    - 避免把 TF-IDF 的 weight 误读为“占比”
+    - 直接在 DB 里确认某个关键词是否真实大量出现
+
+    Args:
+        song_id: 歌曲ID
+        keyword: 关键词（子串匹配）
+        limit: 返回条数
+        min_likes: 最低点赞数
+
+    Returns:
+        {
+            "status": "success",
+            "keyword": "网抑云",
+            "match_total": 123,
+            "comments": [...]
+        }
+    """
+    logger.info(
+        f"[Layer 2.5] song_id={song_id}, keyword={keyword}, limit={limit}, min_likes={min_likes}"
+    )
+    return search_comments_by_keyword(
+        song_id, keyword=keyword, limit=limit, min_likes=min_likes
+    )
+
+
+# ============================================================
+# 工具 9: Layer 3 原始评论
+# ============================================================
+
 
 @mcp.tool()
 def get_raw_comments_v2_tool(
-    song_id: str,
-    year: int = None,
-    min_likes: int = 0,
-    limit: int = 20
+    song_id: str, year: int = None, min_likes: int = 0, limit: int = 20
 ) -> dict:
     """【Layer 3】原始评论 - 深入验证时按需调用
 
@@ -368,6 +409,6 @@ def get_raw_comments_v2_tool(
 if __name__ == "__main__":
     logger.info("=" * 60)
     logger.info("NetEase Music MCP Server v0.8.7")
-    logger.info("工具: search → confirm → add → sample → Layer0→1→2→3")
+    logger.info("工具: search → confirm → add → sample → Layer0→1→2→2.5→3")
     logger.info("=" * 60)
     mcp.run()

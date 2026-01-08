@@ -16,11 +16,24 @@ import os
 import requests
 from typing import List, Dict, Any, Optional
 from datetime import datetime
+import builtins as _builtins
+
+
+def _safe_print(*args, **kwargs):
+    """避免污染 STDIO 协议输出：默认将 print 输出到 stderr。"""
+    if "file" not in kwargs:
+        kwargs["file"] = sys.stderr
+    return _builtins.print(*args, **kwargs)
+
+
+# 仅影响本模块内的 print() 调用
+print = _safe_print
+
 
 # 添加路径
 current_dir = os.path.dirname(os.path.abspath(__file__))
 project_root = os.path.dirname(os.path.dirname(current_dir))
-netease_path = os.path.join(project_root, 'netease_cloud_music')
+netease_path = os.path.join(project_root, "netease_cloud_music")
 if netease_path not in sys.path:
     sys.path.insert(0, netease_path)
 
@@ -33,8 +46,8 @@ PAGE_SIZE = 20  # 与collector.py保持一致
 
 def get_session():
     """获取数据库session"""
-    db_path = os.path.join(project_root, 'data', 'music_data_v2.db')
-    return init_db(f'sqlite:///{db_path}')
+    db_path = os.path.join(project_root, "data", "music_data_v2.db")
+    return init_db(f"sqlite:///{db_path}")
 
 
 def get_real_comments_count_from_api(song_id: str) -> Dict[str, Any]:
@@ -68,32 +81,29 @@ def get_real_comments_count_from_api(song_id: str) -> Dict[str, Any]:
         url = f"http://music.163.com/api/v1/resource/comments/R_SO_4_{song_id}?limit=1&offset=0"
 
         headers = {
-            'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
+            "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36",
         }
 
         # 加载Cookie（如果存在）
         cookie = _load_cookie()
         if cookie:
-            headers['Cookie'] = cookie
+            headers["Cookie"] = cookie
 
         response = requests.get(url, headers=headers, timeout=10)
 
         if response.status_code != 200:
             return {
                 "error": f"API请求失败: HTTP {response.status_code}",
-                "song_id": song_id
+                "song_id": song_id,
             }
 
         data = response.json()
 
-        if data.get('code') != 200:
-            return {
-                "error": f"API返回错误: {data.get('code')}",
-                "song_id": song_id
-            }
+        if data.get("code") != 200:
+            return {"error": f"API返回错误: {data.get('code')}", "song_id": song_id}
 
         # 获取真实总数（显式处理None）
-        total_comments = data.get('total') or 0
+        total_comments = data.get("total") or 0
         total_pages = (total_comments + PAGE_SIZE - 1) // PAGE_SIZE  # 向上取整
 
         return {
@@ -101,19 +111,18 @@ def get_real_comments_count_from_api(song_id: str) -> Dict[str, Any]:
             "api_total_comments": total_comments,
             "total_comments": total_comments,
             "api_total_pages": total_pages,
-            "has_more": data.get('more', False),
+            "has_more": data.get("more", False),
             "page_size": PAGE_SIZE,
-            "note": "数据来自网易云API，未爬取评论内容，仅1秒即可获取真实总数"
+            "note": "数据来自网易云API，未爬取评论内容，仅1秒即可获取真实总数",
         }
 
     except Exception as e:
-        return {
-            "error": f"获取评论总数失败: {str(e)}",
-            "song_id": song_id
-        }
+        return {"error": f"获取评论总数失败: {str(e)}", "song_id": song_id}
 
 
-def get_comments_metadata(song_id: str, include_api_count: bool = True) -> Dict[str, Any]:
+def get_comments_metadata(
+    song_id: str, include_api_count: bool = True
+) -> Dict[str, Any]:
     """
     获取评论元信息（AI决策依据） - 同时返回数据库和API的真实数据
 
@@ -179,9 +188,13 @@ def get_comments_metadata(song_id: str, include_api_count: bool = True) -> Dict[
             span_days = (latest_ts - earliest_ts) / (1000 * 60 * 60 * 24)
 
             time_range = {
-                "earliest": datetime.fromtimestamp(earliest_ts / 1000).strftime("%Y-%m-%d %H:%M:%S"),
-                "latest": datetime.fromtimestamp(latest_ts / 1000).strftime("%Y-%m-%d %H:%M:%S"),
-                "span_days": int(span_days)
+                "earliest": datetime.fromtimestamp(earliest_ts / 1000).strftime(
+                    "%Y-%m-%d %H:%M:%S"
+                ),
+                "latest": datetime.fromtimestamp(latest_ts / 1000).strftime(
+                    "%Y-%m-%d %H:%M:%S"
+                ),
+                "span_days": int(span_days),
             }
         else:
             time_range = {"note": "No timestamp data"}
@@ -206,12 +219,14 @@ def get_comments_metadata(song_id: str, include_api_count: bool = True) -> Dict[
             "total_pages": db_total_pages,
             "data_completeness": data_completeness,
             "deleted_comments": len(deleted_comments),  # 被删除的评论数
-            "total_in_db": len(comments)  # 数据库总评论数(包含已删除)
+            "total_in_db": len(comments),  # 数据库总评论数(包含已删除)
         }
 
         # 删除统计(如果有删除的评论)
         if deleted_comments:
-            deleted_timestamps = [c.deleted_at for c in deleted_comments if c.deleted_at]
+            deleted_timestamps = [
+                c.deleted_at for c in deleted_comments if c.deleted_at
+            ]
             if deleted_timestamps:
                 latest_deletion = max(deleted_timestamps)
                 database_info["latest_deletion_time"] = datetime.fromtimestamp(
@@ -229,7 +244,7 @@ def get_comments_metadata(song_id: str, include_api_count: bool = True) -> Dict[
                 api_info = {
                     "total_comments": api_total,
                     "total_pages": api_data.get("api_total_pages", 0),
-                    "estimated_crawl_time_minutes": _estimate_crawl_time(api_total)
+                    "estimated_crawl_time_minutes": _estimate_crawl_time(api_total),
                 }
 
                 # 计算对比
@@ -251,8 +266,12 @@ def get_comments_metadata(song_id: str, include_api_count: bool = True) -> Dict[
                         "database_coverage": f"{coverage:.2f}%",
                         "missing_comments": missing,
                         "data_status": data_status,  # 新增!明确的状态标识
-                        "suggestion": _generate_suggestion(db_total_comments, api_total),
-                        "sampling_recommendation": _generate_sampling_recommendation(db_total_comments, api_total, song_id)  # Phase 4: 新增采样建议
+                        "suggestion": _generate_suggestion(
+                            db_total_comments, api_total
+                        ),
+                        "sampling_recommendation": _generate_sampling_recommendation(
+                            db_total_comments, api_total, song_id
+                        ),  # Phase 4: 新增采样建议
                     }
 
         # 返回完整结果
@@ -266,8 +285,8 @@ def get_comments_metadata(song_id: str, include_api_count: bool = True) -> Dict[
                 "avg_liked_count": round(avg_liked, 2),
                 "max_liked_count": max_liked,
                 "high_engagement_count": high_engagement_count,
-                "note": "基于数据库中已有评论"
-            }
+                "note": "基于数据库中已有评论",
+            },
         }
         result["database_count"] = database_info.get("total_comments", 0)
         result["cache_status"] = getattr(song, "cache_level", "unknown")
@@ -285,10 +304,7 @@ def get_comments_metadata(song_id: str, include_api_count: bool = True) -> Dict[
 
 
 def get_comments_by_pages(
-    song_id: str,
-    pages: List[int],
-    sort_by: str = "time",
-    data_source: str = "auto"
+    song_id: str, pages: List[int], sort_by: str = "time", data_source: str = "auto"
 ) -> Dict[str, Any]:
     """
     AI指定要哪几页（灵活翻页）
@@ -339,7 +355,7 @@ def get_comments_by_pages(
             "requested_pages": len(pages),
             "max_allowed": MAX_PAGES,
             "estimated_comments": len(pages) * 20,
-            "suggestion": "如需完整数据，请使用 crawl_all_comments_for_song 爬取全部到数据库"
+            "suggestion": "如需完整数据，请使用 crawl_all_comments_for_song 爬取全部到数据库",
         }
 
     # 2. 验证页码范围
@@ -349,7 +365,7 @@ def get_comments_by_pages(
             "status": "error",
             "message": f"页码超出有效范围: {invalid_pages}",
             "valid_range": f"1-{MAX_PAGE_NUMBER}",
-            "suggestion": "请检查页码是否正确"
+            "suggestion": "请检查页码是否正确",
         }
 
     # 3. 验证sort_by参数
@@ -357,7 +373,7 @@ def get_comments_by_pages(
         return {
             "status": "error",
             "message": f"无效的排序方式: {sort_by}",
-            "valid_options": ["time", "hot"]
+            "valid_options": ["time", "hot"],
         }
 
     # 4. 验证data_source参数
@@ -365,7 +381,7 @@ def get_comments_by_pages(
         return {
             "status": "error",
             "message": f"无效的数据源: {data_source}",
-            "valid_options": ["auto", "database", "api"]
+            "valid_options": ["auto", "database", "api"],
         }
 
     session = get_session()
@@ -379,10 +395,13 @@ def get_comments_by_pages(
             metadata = get_comments_metadata(song_id, include_api_count=True)
 
             # 提取覆盖率和数据状态
-            if "comparison" in metadata and "database_coverage" in metadata["comparison"]:
+            if (
+                "comparison" in metadata
+                and "database_coverage" in metadata["comparison"]
+            ):
                 coverage_str = metadata["comparison"]["database_coverage"]
                 try:
-                    coverage = float(coverage_str.strip('%'))
+                    coverage = float(coverage_str.strip("%"))
                 except:
                     coverage = 0
 
@@ -391,20 +410,28 @@ def get_comments_by_pages(
                 # 智能判断逻辑
                 if data_status == "insufficient" or coverage < 10:
                     actual_source = "api"
-                    print(f"[Auto模式] DB覆盖率{coverage:.1f}%不足 (status:{data_status}),从API获取最新数据")
+                    print(
+                        f"[Auto模式] DB覆盖率{coverage:.1f}%不足 (status:{data_status}),从API获取最新数据"
+                    )
 
                 elif data_status == "fresh" or coverage >= 95:
                     actual_source = "database"
-                    print(f"[Auto模式] DB覆盖率{coverage:.1f}% (status:{data_status}),数据充足,使用数据库")
+                    print(
+                        f"[Auto模式] DB覆盖率{coverage:.1f}% (status:{data_status}),数据充足,使用数据库"
+                    )
 
                 elif data_status == "partial":  # 50-95%
                     # 根据绝对数量辅助判断
                     if db_comment_count >= 500:
                         actual_source = "database"
-                        print(f"[Auto模式] DB已有{db_comment_count}条评论(覆盖率{coverage:.1f}%),足够分析")
+                        print(
+                            f"[Auto模式] DB已有{db_comment_count}条评论(覆盖率{coverage:.1f}%),足够分析"
+                        )
                     else:
                         actual_source = "api"
-                        print(f"[Auto模式] 补充采样以提高分析质量(当前{db_comment_count}条,覆盖率{coverage:.1f}%)")
+                        print(
+                            f"[Auto模式] 补充采样以提高分析质量(当前{db_comment_count}条,覆盖率{coverage:.1f}%)"
+                        )
 
                 else:  # outdated或其他
                     actual_source = "api"
@@ -433,28 +460,24 @@ def get_comments_by_pages(
                 "status": "error",
                 "message": "数据库中没有找到评论数据",
                 "song_id": song_id,
-                "suggestion": "请使用 data_source='api' 从网易云API获取评论"
+                "suggestion": "请使用 data_source='api' 从网易云API获取评论",
             }
 
         # 排序
         if sort_by == "hot":
             # 参考 api_v2.py:106 - 热门排序（按点赞数倒序）
             sorted_comments = sorted(
-                all_comments,
-                key=lambda c: c.liked_count or 0,
-                reverse=True
+                all_comments, key=lambda c: c.liked_count or 0, reverse=True
             )
         elif sort_by == "time":
             # 参考 api_v2.py:119 - 时间排序（最新在前）
             sorted_comments = sorted(
-                all_comments,
-                key=lambda c: c.timestamp or 0,
-                reverse=True
+                all_comments, key=lambda c: c.timestamp or 0, reverse=True
             )
         else:
             return {
                 "error": f"Invalid sort_by: {sort_by}",
-                "valid_options": ["time", "hot"]
+                "valid_options": ["time", "hot"],
             }
 
         # 分页提取
@@ -465,18 +488,22 @@ def get_comments_by_pages(
 
             # 计算offset（参考 collector.py:45）
             offset = (page - 1) * PAGE_SIZE
-            page_comments = sorted_comments[offset:offset + PAGE_SIZE]
+            page_comments = sorted_comments[offset : offset + PAGE_SIZE]
 
             for i, comment in enumerate(page_comments, 1):
-                result_comments.append({
-                    "comment_id": comment.comment_id,
-                    "content": comment.content,
-                    "liked_count": comment.liked_count,
-                    "timestamp": comment.timestamp,
-                    "user_nickname": comment.user_nickname if hasattr(comment, 'user_nickname') else None,
-                    "page": page,
-                    "position_in_page": i
-                })
+                result_comments.append(
+                    {
+                        "comment_id": comment.comment_id,
+                        "content": comment.content,
+                        "liked_count": comment.liked_count,
+                        "timestamp": comment.timestamp,
+                        "user_nickname": comment.user_nickname
+                        if hasattr(comment, "user_nickname")
+                        else None,
+                        "page": page,
+                        "position_in_page": i,
+                    }
+                )
 
         return {
             "song_id": song_id,
@@ -485,7 +512,7 @@ def get_comments_by_pages(
             "pages_requested": pages,
             "pages_returned": len(pages),
             "total_comments_returned": len(result_comments),
-            "comments": result_comments
+            "comments": result_comments,
         }
 
     finally:
@@ -493,9 +520,7 @@ def get_comments_by_pages(
 
 
 def _fetch_comments_from_api(
-    song_id: str,
-    pages: List[int],
-    sort_by: str = "time"
+    song_id: str, pages: List[int], sort_by: str = "time"
 ) -> Dict[str, Any]:
     """
     从网易云API直接获取评论（不依赖数据库）
@@ -511,13 +536,13 @@ def _fetch_comments_from_api(
     result_comments = []
 
     headers = {
-        'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
+        "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36",
     }
 
     # 加载Cookie（如果存在）
     cookie = _load_cookie()
     if cookie:
-        headers['Cookie'] = cookie
+        headers["Cookie"] = cookie
 
     for page in pages:
         if page < 1:
@@ -538,27 +563,30 @@ def _fetch_comments_from_api(
 
             data = response.json()
 
-            if data.get('code') != 200:
+            if data.get("code") != 200:
                 print(f"[API Error] 第 {page} 页返回错误: {data.get('code')}")
                 continue
 
-            comments = data.get('comments', [])
+            comments = data.get("comments", [])
 
             # 解析评论
             for i, comment in enumerate(comments, 1):
-                user_info = comment.get('user', {})
-                result_comments.append({
-                    "comment_id": str(comment.get('commentId', '')),
-                    "content": comment.get('content', ''),
-                    "liked_count": comment.get('likedCount', 0),
-                    "timestamp": comment.get('time', 0),
-                    "user_nickname": user_info.get('nickname', ''),
-                    "page": page,
-                    "position_in_page": i
-                })
+                user_info = comment.get("user", {})
+                result_comments.append(
+                    {
+                        "comment_id": str(comment.get("commentId", "")),
+                        "content": comment.get("content", ""),
+                        "liked_count": comment.get("likedCount", 0),
+                        "timestamp": comment.get("time", 0),
+                        "user_nickname": user_info.get("nickname", ""),
+                        "page": page,
+                        "position_in_page": i,
+                    }
+                )
 
             # 简单的延迟，避免请求过快
             import time
+
             time.sleep(0.5)
 
         except Exception as e:
@@ -567,7 +595,7 @@ def _fetch_comments_from_api(
 
     # 如果需要按热门排序，重新排序
     if sort_by == "hot":
-        result_comments.sort(key=lambda c: c['liked_count'], reverse=True)
+        result_comments.sort(key=lambda c: c["liked_count"], reverse=True)
 
     return {
         "song_id": song_id,
@@ -577,18 +605,18 @@ def _fetch_comments_from_api(
         "pages_returned": len(pages),
         "total_comments_returned": len(result_comments),
         "comments": result_comments,
-        "note": "数据直接来自网易云API，未保存到数据库"
+        "note": "数据直接来自网易云API，未保存到数据库",
     }
 
 
 def _load_cookie():
     """加载Cookie文件（如果存在）"""
     try:
-        cookie_path = os.path.join(project_root, 'netease_cloud_music', 'cookie.txt')
+        cookie_path = os.path.join(project_root, "netease_cloud_music", "cookie.txt")
         if os.path.exists(cookie_path):
-            with open(cookie_path, 'r', encoding='utf-8') as f:
+            with open(cookie_path, "r", encoding="utf-8") as f:
                 content = f.read().strip()
-                if content and not content.startswith('#'):
+                if content and not content.startswith("#"):
                     return content
     except Exception as e:
         print(f"[Warning] 读取Cookie失败: {e}")
@@ -614,7 +642,9 @@ def _estimate_crawl_time(total_comments: int) -> int:
     return total_minutes
 
 
-def _generate_sampling_recommendation(db_count: int, api_count: int, song_id: str) -> dict:
+def _generate_sampling_recommendation(
+    db_count: int, api_count: int, song_id: str
+) -> dict:
     """Phase 4: 生成采样智能建议（AI决策树）
 
     Args:
@@ -632,14 +662,16 @@ def _generate_sampling_recommendation(db_count: int, api_count: int, song_id: st
             "should_sample": False,
             "reason": f"评论总数较少（{api_count}条），建议全量爬取",
             "recommended_action": f"crawl_all_comments_for_song(song_id='{song_id}')",
-            "expected_time": f"约{_estimate_crawl_time(api_count)}分钟"
+            "expected_time": f"约{_estimate_crawl_time(api_count)}分钟",
         }
 
     # 情况2：总评论 100-5000
     elif api_count <= 5000:
         total_pages = (api_count + 19) // 20
         step = max(total_pages // 5, 1)
-        recommended_pages = [1 + i * step for i in range(5) if 1 + i * step <= total_pages]
+        recommended_pages = [
+            1 + i * step for i in range(5) if 1 + i * step <= total_pages
+        ]
 
         return {
             "should_crawl_all": False,
@@ -650,15 +682,17 @@ def _generate_sampling_recommendation(db_count: int, api_count: int, song_id: st
                 "recommended_pages": recommended_pages,
                 "strategy": "均匀分布采样",
                 "expected_count": f"约{len(recommended_pages) * 20}条",
-                "call_example": f"get_comments_by_pages_tool(song_id='{song_id}', pages={recommended_pages})"
-            }
+                "call_example": f"get_comments_by_pages_tool(song_id='{song_id}', pages={recommended_pages})",
+            },
         }
 
     # 情况3：总评论 > 5000
     else:
         total_pages = (api_count + 19) // 20
         step = max(total_pages // 5, 1)
-        recommended_pages = [1 + i * step for i in range(5) if 1 + i * step <= total_pages]
+        recommended_pages = [
+            1 + i * step for i in range(5) if 1 + i * step <= total_pages
+        ]
 
         return {
             "should_crawl_all": False,
@@ -669,9 +703,9 @@ def _generate_sampling_recommendation(db_count: int, api_count: int, song_id: st
                 "recommended_pages": recommended_pages,
                 "strategy": "均匀分布采样",
                 "expected_count": f"约{len(recommended_pages) * 20}条",
-                "call_example": f"get_comments_by_pages_tool(song_id='{song_id}', pages={recommended_pages})"
+                "call_example": f"get_comments_by_pages_tool(song_id='{song_id}', pages={recommended_pages})",
             },
-            "warning": "全量爬取将耗时较长且可能超出分析工具限制（MAX=5000）"
+            "warning": "全量爬取将耗时较长且可能超出分析工具限制（MAX=5000）",
         }
 
 
@@ -762,11 +796,16 @@ def _get_platform_knowledge():
     """延迟导入以避免循环依赖"""
     import sys
     import os
-    knowledge_path = os.path.join(os.path.dirname(os.path.dirname(__file__)), 'knowledge')
+
+    knowledge_path = os.path.join(
+        os.path.dirname(os.path.dirname(__file__)), "knowledge"
+    )
     if knowledge_path not in sys.path:
         sys.path.insert(0, knowledge_path)
     from knowledge_loader import get_platform_domain_knowledge as _get
+
     return _get()
+
 
 # 保持向后兼容
 get_platform_domain_knowledge = lambda: _get_platform_knowledge()
@@ -808,7 +847,7 @@ def get_cultural_context(song_id: str) -> Dict[str, Any]:
             return {
                 "status": "error",
                 "message": "歌曲未找到",
-                "suggestion": "请先使用 search_songs_tool 搜索歌曲并添加到数据库"
+                "suggestion": "请先使用 search_songs_tool 搜索歌曲并添加到数据库",
             }
 
         # 加载文化背景知识库
@@ -820,24 +859,26 @@ def get_cultural_context(song_id: str) -> Dict[str, Any]:
 
         # 构建响应
         cultural_context = {
-            "platform_slang": cultural_knowledge.get('platform_slang', {}),
+            "platform_slang": cultural_knowledge.get("platform_slang", {}),
             "artist_background": loader.get_artist_context(artist_name),
             "song_era": _determine_song_era(song, cultural_knowledge),
-            "comment_patterns": cultural_knowledge.get('comment_culture_patterns', {})
+            "comment_patterns": cultural_knowledge.get("comment_culture_patterns", {}),
         }
 
         return {
             "song_name": song.name,
             "artist": artist_name,
             "cultural_context": cultural_context,
-            "usage": "AI可以用这些背景知识理解评论区的'黑话'和文化现象，所有知识来自可扩展的JSON配置"
+            "usage": "AI可以用这些背景知识理解评论区的'黑话'和文化现象，所有知识来自可扩展的JSON配置",
         }
 
     finally:
         session.close()
 
 
-def _determine_song_era(song, cultural_knowledge: Dict[str, Any]) -> Optional[Dict[str, Any]]:
+def _determine_song_era(
+    song, cultural_knowledge: Dict[str, Any]
+) -> Optional[Dict[str, Any]]:
     """
     判断歌曲所属年代（辅助函数）
 
@@ -848,30 +889,27 @@ def _determine_song_era(song, cultural_knowledge: Dict[str, Any]) -> Optional[Di
     Returns:
         年代信息字典，或None
     """
-    if not hasattr(song, 'publish_time') or not song.publish_time:
+    if not hasattr(song, "publish_time") or not song.publish_time:
         return None
 
     year = song.publish_time // (1000 * 60 * 60 * 24 * 365) + 1970
-    eras = cultural_knowledge.get('song_era_markers', {}).get('eras', {})
+    eras = cultural_knowledge.get("song_era_markers", {}).get("eras", {})
 
     # 根据年份匹配年代
     for era_key, era_info in eras.items():
-        if '-' in era_key:
-            start_str, end_str = era_key.replace('s', '').split('-')
+        if "-" in era_key:
+            start_str, end_str = era_key.replace("s", "").split("-")
             start = int(start_str)
-            end = int(end_str) if end_str != 'now' else 2030
+            end = int(end_str) if end_str != "now" else 2030
 
             if start <= year < end:
-                return {
-                    "era": era_key,
-                    "year": year,
-                    **era_info
-                }
+                return {"era": era_key, "year": year, **era_info}
 
     return {"year": year, "era": "未知年代"}
 
 
 # ========== 兼容旧接口（可选保留） ==========
+
 
 def get_representative_comments(song_id: str, limit: int = 10) -> Dict[str, Any]:
     """
@@ -896,11 +934,13 @@ def get_representative_comments(song_id: str, limit: int = 10) -> Dict[str, Any]
             return {
                 "status": "error",
                 "message": "数据库中没有找到评论数据",
-                "suggestion": "请先使用 get_comments_by_pages_tool(data_source='api') 获取评论"
+                "suggestion": "请先使用 get_comments_by_pages_tool(data_source='api') 获取评论",
             }
 
         # 1. 最高赞 3 条
-        top_liked = sorted(all_comments, key=lambda x: x.liked_count or 0, reverse=True)[:3]
+        top_liked = sorted(
+            all_comments, key=lambda x: x.liked_count or 0, reverse=True
+        )[:3]
 
         # 2. 最新 2 条
         recent = sorted(all_comments, key=lambda x: x.timestamp or 0, reverse=True)[:2]
@@ -923,11 +963,11 @@ def get_representative_comments(song_id: str, limit: int = 10) -> Dict[str, Any]
 
         # 合并去重
         all_selected = set(
-            [c.id for c in top_liked] +
-            [c.id for c in recent] +
-            [c.id for c in most_negative] +
-            [c.id for c in most_positive] +
-            [c.id for c in random_sample]
+            [c.id for c in top_liked]
+            + [c.id for c in recent]
+            + [c.id for c in most_negative]
+            + [c.id for c in most_positive]
+            + [c.id for c in random_sample]
         )
 
         # 取前limit条
@@ -940,11 +980,11 @@ def get_representative_comments(song_id: str, limit: int = 10) -> Dict[str, Any]
                 {
                     "content": c.content,
                     "liked_count": c.liked_count,
-                    "timestamp": c.timestamp
+                    "timestamp": c.timestamp,
                 }
                 for c in selected_comments
             ],
-            "note": "精选代表性评论，包含高赞、最新、情感极端等（快速查看用）"
+            "note": "精选代表性评论，包含高赞、最新、情感极端等（快速查看用）",
         }
 
     finally:
@@ -953,10 +993,9 @@ def get_representative_comments(song_id: str, limit: int = 10) -> Dict[str, Any]
 
 # ========== v0.7.1: 分层采样策略 v2.2 ==========
 
+
 def stratified_sample_by_cursor(
-    song_id: str,
-    years: List[int] = None,
-    samples_per_year: int = 50
+    song_id: str, years: List[int] = None, samples_per_year: int = 50
 ) -> Dict[str, Any]:
     """
     Layer 3: 基于cursor时间跳转的历史分层采样
@@ -988,17 +1027,17 @@ def stratified_sample_by_cursor(
         current_year = datetime.now().year
         years = list(range(current_year, 2013, -1))  # 2024, 2023, ..., 2014
 
-    url = 'https://music.163.com/weapi/comment/resource/comments/get?csrf_token='
+    url = "https://music.163.com/weapi/comment/resource/comments/get?csrf_token="
     headers = {
-        'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36',
-        'Content-Type': 'application/x-www-form-urlencoded',
-        'Referer': 'https://music.163.com/',
+        "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36",
+        "Content-Type": "application/x-www-form-urlencoded",
+        "Referer": "https://music.163.com/",
     }
 
     # 加载Cookie
     cookie = _load_cookie()
     if cookie:
-        headers['Cookie'] = cookie
+        headers["Cookie"] = cookie
 
     all_samples = []
     year_distribution = {}
@@ -1014,49 +1053,53 @@ def stratified_sample_by_cursor(
             request_count += 1
 
             payload = {
-                'rid': f'R_SO_4_{song_id}',
-                'threadId': f'R_SO_4_{song_id}',
-                'pageNo': '1',
-                'pageSize': '20',
-                'cursor': cursor,
-                'offset': '0',
-                'orderType': '1',
-                'csrf_token': ''
+                "rid": f"R_SO_4_{song_id}",
+                "threadId": f"R_SO_4_{song_id}",
+                "pageNo": "1",
+                "pageSize": "20",
+                "cursor": cursor,
+                "offset": "0",
+                "orderType": "1",
+                "csrf_token": "",
             }
 
             try:
                 params = create_weapi_params(payload)
-                data = {'params': params['params'], 'encSecKey': params['encSecKey']}
+                data = {"params": params["params"], "encSecKey": params["encSecKey"]}
 
                 resp = requests.post(url, data=data, headers=headers, timeout=15)
                 res_data = resp.json()
 
-                if res_data.get('code') != 200:
+                if res_data.get("code") != 200:
                     print(f"[cursor采样] {year}年 API错误: {res_data.get('code')}")
                     break
 
-                comments = res_data.get('data', {}).get('comments', [])
+                comments = res_data.get("data", {}).get("comments", [])
                 if not comments:
                     break
 
                 # 只保留该年的评论
                 for c in comments:
-                    c_time = c.get('time', 0)
+                    c_time = c.get("time", 0)
                     if c_time:
                         c_year = datetime.fromtimestamp(c_time / 1000).year
                         if c_year == year and len(year_samples) < samples_per_year:
-                            year_samples.append({
-                                'comment_id': str(c.get('commentId', '')),
-                                'content': c.get('content', ''),
-                                'liked_count': c.get('likedCount', 0),
-                                'timestamp': c_time,
-                                'user_nickname': c.get('user', {}).get('nickname', ''),
-                                'sample_year': year,
-                                'sample_layer': 'historical'
-                            })
+                            year_samples.append(
+                                {
+                                    "comment_id": str(c.get("commentId", "")),
+                                    "content": c.get("content", ""),
+                                    "liked_count": c.get("likedCount", 0),
+                                    "timestamp": c_time,
+                                    "user_nickname": c.get("user", {}).get(
+                                        "nickname", ""
+                                    ),
+                                    "sample_year": year,
+                                    "sample_layer": "historical",
+                                }
+                            )
 
                 # 更新cursor到最后一条评论的时间
-                new_cursor = str(comments[-1].get('time', 0))
+                new_cursor = str(comments[-1].get("time", 0))
                 if new_cursor == cursor:
                     break
                 cursor = new_cursor
@@ -1079,7 +1122,7 @@ def stratified_sample_by_cursor(
         "samples_per_year": samples_per_year,
         "total_sampled": len(all_samples),
         "comments": all_samples,
-        "year_distribution": year_distribution
+        "year_distribution": year_distribution,
     }
 
 
@@ -1089,29 +1132,29 @@ def get_hot_comments_from_api(song_id: str) -> List[Dict]:
     """
     url = f"http://music.163.com/api/v1/resource/comments/R_SO_4_{song_id}?limit=20&offset=0"
     headers = {
-        'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36',
+        "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36",
     }
 
     cookie = _load_cookie()
     if cookie:
-        headers['Cookie'] = cookie
+        headers["Cookie"] = cookie
 
     try:
         resp = requests.get(url, headers=headers, timeout=10)
         data = resp.json()
 
-        if data.get('code') != 200:
+        if data.get("code") != 200:
             return []
 
-        hot_comments = data.get('hotComments', [])
+        hot_comments = data.get("hotComments", [])
         return [
             {
-                'comment_id': str(c.get('commentId', '')),
-                'content': c.get('content', ''),
-                'liked_count': c.get('likedCount', 0),
-                'timestamp': c.get('time', 0),
-                'user_nickname': c.get('user', {}).get('nickname', ''),
-                'sample_layer': 'hot'
+                "comment_id": str(c.get("commentId", "")),
+                "content": c.get("content", ""),
+                "liked_count": c.get("likedCount", 0),
+                "timestamp": c.get("time", 0),
+                "user_nickname": c.get("user", {}).get("nickname", ""),
+                "sample_layer": "hot",
             }
             for c in hot_comments[:15]
         ]
@@ -1130,12 +1173,12 @@ def get_recent_comments_from_api(song_id: str, limit: int = 100) -> List[Dict]:
     pages_needed = (limit + PAGE_SIZE - 1) // PAGE_SIZE
 
     headers = {
-        'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36',
+        "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36",
     }
 
     cookie = _load_cookie()
     if cookie:
-        headers['Cookie'] = cookie
+        headers["Cookie"] = cookie
 
     for page in range(1, pages_needed + 1):
         offset = (page - 1) * PAGE_SIZE
@@ -1145,22 +1188,24 @@ def get_recent_comments_from_api(song_id: str, limit: int = 100) -> List[Dict]:
             resp = requests.get(url, headers=headers, timeout=10)
             data = resp.json()
 
-            if data.get('code') != 200:
+            if data.get("code") != 200:
                 break
 
-            comments = data.get('comments', [])
+            comments = data.get("comments", [])
             if not comments:
                 break
 
             for c in comments:
-                all_comments.append({
-                    'comment_id': str(c.get('commentId', '')),
-                    'content': c.get('content', ''),
-                    'liked_count': c.get('likedCount', 0),
-                    'timestamp': c.get('time', 0),
-                    'user_nickname': c.get('user', {}).get('nickname', ''),
-                    'sample_layer': 'recent'
-                })
+                all_comments.append(
+                    {
+                        "comment_id": str(c.get("commentId", "")),
+                        "content": c.get("content", ""),
+                        "liked_count": c.get("likedCount", 0),
+                        "timestamp": c.get("time", 0),
+                        "user_nickname": c.get("user", {}).get("nickname", ""),
+                        "sample_layer": "recent",
+                    }
+                )
 
             time.sleep(0.3)
 
@@ -1172,8 +1217,7 @@ def get_recent_comments_from_api(song_id: str, limit: int = 100) -> List[Dict]:
 
 
 def full_stratified_sample(
-    song_id: str,
-    analysis_type: str = "sentiment"
+    song_id: str, analysis_type: str = "sentiment"
 ) -> Dict[str, Any]:
     """
     完整的分层采样（组合 Layer 1 + 2 + 3）
@@ -1211,44 +1255,44 @@ def full_stratified_sample(
             "hot": 15,
             "recent": 100,
             "historical_per_year": 30,  # 300/10年
-            "historical_years": 10
+            "historical_years": 10,
         },
         "timeline": {
             "hot": 15,
             "recent": 50,
             "historical_per_year": 50,  # 550/11年
-            "historical_years": 11
+            "historical_years": 11,
         },
         "comparison": {
             "hot": 15,
             "recent": 50,
             "historical_per_year": 20,  # 200/10年
-            "historical_years": 10
-        }
+            "historical_years": 10,
+        },
     }
 
     config = SAMPLING_CONFIGS.get(analysis_type, SAMPLING_CONFIGS["sentiment"])
 
     print(f"[分层采样] 开始采样 song_id={song_id}, 类型={analysis_type}")
-    print(f"[分层采样] 配置: 热评{config['hot']} + 最新{config['recent']} + 历史{config['historical_per_year']}条/年×{config['historical_years']}年")
+    print(
+        f"[分层采样] 配置: 热评{config['hot']} + 最新{config['recent']} + 历史{config['historical_per_year']}条/年×{config['historical_years']}年"
+    )
 
     # Layer 1: 热门评论
     hot_comments = get_hot_comments_from_api(song_id)
     print(f"[分层采样] Layer 1 热评: {len(hot_comments)}条")
 
     # Layer 2: 最新评论
-    recent_comments = get_recent_comments_from_api(song_id, limit=config['recent'])
+    recent_comments = get_recent_comments_from_api(song_id, limit=config["recent"])
     print(f"[分层采样] Layer 2 最新: {len(recent_comments)}条")
 
     # Layer 3: 历史分层采样
     current_year = datetime.now().year
-    years = list(range(current_year, current_year - config['historical_years'], -1))
+    years = list(range(current_year, current_year - config["historical_years"], -1))
     historical_result = stratified_sample_by_cursor(
-        song_id,
-        years=years,
-        samples_per_year=config['historical_per_year']
+        song_id, years=years, samples_per_year=config["historical_per_year"]
     )
-    historical_comments = historical_result.get('comments', [])
+    historical_comments = historical_result.get("comments", [])
     print(f"[分层采样] Layer 3 历史: {len(historical_comments)}条")
 
     # 合并去重
@@ -1256,7 +1300,7 @@ def full_stratified_sample(
     seen_ids = set()
 
     for c in hot_comments + recent_comments + historical_comments:
-        cid = c.get('comment_id')
+        cid = c.get("comment_id")
         if cid and cid not in seen_ids:
             seen_ids.add(cid)
             all_comments.append(c)
@@ -1264,7 +1308,7 @@ def full_stratified_sample(
     # 统计年份覆盖
     years_covered = set()
     for c in all_comments:
-        ts = c.get('timestamp')
+        ts = c.get("timestamp")
         if ts:
             years_covered.add(datetime.fromtimestamp(ts / 1000).year)
 
@@ -1282,10 +1326,12 @@ def full_stratified_sample(
             "historical_count": len(historical_comments),
             "total_unique": len(all_comments),
             "years_covered": len(years_covered),
-            "year_list": sorted(years_covered, reverse=True)
-        }
+            "year_list": sorted(years_covered, reverse=True),
+        },
     }
 
-    print(f"[分层采样] 完成! 总计{len(all_comments)}条唯一评论，覆盖{len(years_covered)}年")
+    print(
+        f"[分层采样] 完成! 总计{len(all_comments)}条唯一评论，覆盖{len(years_covered)}年"
+    )
 
     return result

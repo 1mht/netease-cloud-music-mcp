@@ -7,11 +7,24 @@ import sys
 import os
 import requests
 import time
+import builtins as _builtins
+
+
+def _safe_print(*args, **kwargs):
+    """避免污染 STDIO 协议输出：默认将 print 输出到 stderr。"""
+    if "file" not in kwargs:
+        kwargs["file"] = sys.stderr
+    return _builtins.print(*args, **kwargs)
+
+
+# 仅影响本模块内的 print() 调用
+print = _safe_print
+
 
 # 添加 netease_cloud_music 到 Python 路径
 current_dir = os.path.dirname(os.path.abspath(__file__))
 project_root = os.path.dirname(os.path.dirname(current_dir))
-netease_path = os.path.join(project_root, 'netease_cloud_music')
+netease_path = os.path.join(project_root, "netease_cloud_music")
 if netease_path not in sys.path:
     sys.path.insert(0, netease_path)
 
@@ -21,14 +34,21 @@ from get_song_lyric import get_lyric
 from get_song_id import get_song_detail_by_id
 from collector import crawl_all_comments_task
 
+
 # 创建一个辅助函数
 def get_session():
     """获取数据库session"""
-    db_path = os.path.join(os.path.dirname(os.path.dirname(os.path.dirname(__file__))), 'data', 'music_data_v2.db')
-    return init_db(f'sqlite:///{db_path}')
+    db_path = os.path.join(
+        os.path.dirname(os.path.dirname(os.path.dirname(__file__))),
+        "data",
+        "music_data_v2.db",
+    )
+    return init_db(f"sqlite:///{db_path}")
 
 
-def add_song_basic(song_data: dict = None, db_path: str = None, song_id: str = None) -> dict:
+def add_song_basic(
+    song_data: dict = None, db_path: str = None, song_id: str = None
+) -> dict:
     """添加歌曲基础数据到数据库（Level 2: 元数据 + 热门评论 + 最新评论）
 
     Args:
@@ -64,23 +84,17 @@ def add_song_basic(song_data: dict = None, db_path: str = None, song_id: str = N
         if not song_data:
             return {
                 "status": "error",
-                "message": f"Failed to fetch song detail for song_id: {song_id}"
+                "message": f"Failed to fetch song detail for song_id: {song_id}",
             }
 
     if not song_data:
-        return {
-            "status": "error",
-            "message": "song_data or song_id is required"
-        }
+        return {"status": "error", "message": "song_data or song_id is required"}
 
     if not song_id:
-        song_id = song_data.get('id')
+        song_id = song_data.get("id")
 
     if not song_id:
-        return {
-            "status": "error",
-            "message": "歌曲数据缺少ID字段"
-        }
+        return {"status": "error", "message": "歌曲数据缺少ID字段"}
 
     try:
         # 1. 保存歌曲基本信息（元数据 + 艺术家 + 专辑）
@@ -103,13 +117,13 @@ def add_song_basic(song_data: dict = None, db_path: str = None, song_id: str = N
         try:
             url = f"http://music.163.com/api/v1/resource/comments/R_SO_4_{song_id}?limit=50&offset=0"
             headers = {
-                'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36'
+                "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36"
             }
             response = requests.get(url, headers=headers, timeout=10)
 
             if response.status_code == 200:
                 data = response.json()
-                hot_comments = data.get('comments', [])
+                hot_comments = data.get("comments", [])
                 if hot_comments:
                     save_comments(session, song_id, hot_comments)
                     hot_comments_count = len(hot_comments)
@@ -126,7 +140,7 @@ def add_song_basic(song_data: dict = None, db_path: str = None, song_id: str = N
 
             if response.status_code == 200:
                 data = response.json()
-                recent_comments = data.get('comments', [])
+                recent_comments = data.get("comments", [])
                 if recent_comments:
                     save_comments(session, song_id, recent_comments)
                     recent_comments_count = len(recent_comments)
@@ -142,28 +156,30 @@ def add_song_basic(song_data: dict = None, db_path: str = None, song_id: str = N
         return {
             "status": "success",
             "song_id": song_id,
-            "song_name": song_data.get('name'),
+            "song_name": song_data.get("name"),
             "data_collected": {
                 "metadata": True,
                 "lyric": lyric_saved,
                 "hot_comments": hot_comments_count,
                 "recent_comments": recent_comments_count,
-                "total_comments": total_comments
+                "total_comments": total_comments,
             },
-            "message": f"基础数据已保存（{total_comments}条评论）。如需完整数据分析，可使用 crawl_all_comments() 获取全部评论。"
+            "message": f"基础数据已保存（{total_comments}条评论）。如需完整数据分析，可使用 crawl_all_comments() 获取全部评论。",
         }
 
     except Exception as e:
         session.rollback()
-        return {
-            "status": "error",
-            "message": f"添加歌曲失败: {str(e)}"
-        }
+        return {"status": "error", "message": f"添加歌曲失败: {str(e)}"}
     finally:
         session.close()
 
 
-def crawl_all_comments(song_id: str, confirm: bool = True, db_path: str = "data/music_data_v2.db", detect_deletions: bool = False) -> dict:
+def crawl_all_comments(
+    song_id: str,
+    confirm: bool = True,
+    db_path: str = "data/music_data_v2.db",
+    detect_deletions: bool = False,
+) -> dict:
     """抓取歌曲的全部评论（Level 3: 深度数据收集，带预估耗时和用户交互）
 
     ⚠️ DEPRECATED in v0.6.5 - 此工具已弃用但保留
@@ -230,6 +246,7 @@ def crawl_all_comments(song_id: str, confirm: bool = True, db_path: str = "data/
     """
     # 导入放在顶部可能导致循环依赖，所以在函数内导入
     import sys
+
     current_dir = os.path.dirname(os.path.abspath(__file__))
     if current_dir not in sys.path:
         sys.path.insert(0, current_dir)
@@ -244,7 +261,7 @@ def crawl_all_comments(song_id: str, confirm: bool = True, db_path: str = "data/
         if not song:
             return {
                 "status": "error",
-                "message": "歌曲不存在于数据库，请先使用 add_song_basic() 添加歌曲基础信息"
+                "message": "歌曲不存在于数据库，请先使用 add_song_basic() 添加歌曲基础信息",
             }
 
         # 获取当前数据库评论数
@@ -259,7 +276,7 @@ def crawl_all_comments(song_id: str, confirm: bool = True, db_path: str = "data/
                 session.close()
                 return {
                     "status": "error",
-                    "message": f"无法获取真实评论数: {api_info.get('error')}"
+                    "message": f"无法获取真实评论数: {api_info.get('error')}",
                 }
 
             # 显式处理None（网易云API可能返回total=None）
@@ -292,7 +309,7 @@ def crawl_all_comments(song_id: str, confirm: bool = True, db_path: str = "data/
                     "song_name": song.name,
                     "database_comments": current_count,
                     "api_total_comments": api_total,
-                    "message": f"数据库已包含全部 {current_count} 条评论，无需重复爬取。"
+                    "message": f"数据库已包含全部 {current_count} 条评论，无需重复爬取。",
                 }
 
             return {
@@ -306,7 +323,7 @@ def crawl_all_comments(song_id: str, confirm: bool = True, db_path: str = "data/
                 "estimated_time_readable": time_readable,
                 "message": f"将要爬取约 {missing_comments} 条新评论（总计 {api_total} 条），预计耗时 {estimated_minutes} 分钟（{time_readable}）。",
                 "suggestion": "爬取过程中会实时显示进度（已爬取XX页/总XX页）。",
-                "next_step": f"如需开始爬取，请调用 crawl_all_comments_for_song(song_id='{song_id}', confirm=False)"
+                "next_step": f"如需开始爬取，请调用 crawl_all_comments_for_song(song_id='{song_id}', confirm=False)",
             }
 
         # confirm=False，开始爬取
@@ -320,13 +337,14 @@ def crawl_all_comments(song_id: str, confirm: bool = True, db_path: str = "data/
             # 如果是相对路径，转换为绝对路径
             if not os.path.isabs(db_path):
                 db_path = os.path.join(
-                    os.path.dirname(os.path.dirname(os.path.dirname(__file__))),
-                    db_path
+                    os.path.dirname(os.path.dirname(os.path.dirname(__file__))), db_path
                 )
             db_path = f"sqlite:///{db_path}"
 
         # 执行完整爬取
-        total_comments = crawl_all_comments_task(song_id, db_path, detect_deletions=detect_deletions)
+        total_comments = crawl_all_comments_task(
+            song_id, db_path, detect_deletions=detect_deletions
+        )
 
         return {
             "status": "completed",
@@ -335,17 +353,16 @@ def crawl_all_comments(song_id: str, confirm: bool = True, db_path: str = "data/
             "previous_count": current_count,
             "total_count": total_comments,
             "new_comments": total_comments - current_count,
-            "message": f"抓取完成！新增 {total_comments - current_count} 条评论，总计 {total_comments} 条。"
+            "message": f"抓取完成！新增 {total_comments - current_count} 条评论，总计 {total_comments} 条。",
         }
 
     except Exception as e:
-        return {
-            "status": "error",
-            "message": f"抓取评论失败: {str(e)}"
-        }
+        return {"status": "error", "message": f"抓取评论失败: {str(e)}"}
 
 
-def get_song_details(song_id: str, include_comments: bool = True, limit: int = 100) -> dict:
+def get_song_details(
+    song_id: str, include_comments: bool = True, limit: int = 100
+) -> dict:
     """获取数据库中歌曲的完整信息
 
     Args:
@@ -374,10 +391,7 @@ def get_song_details(song_id: str, include_comments: bool = True, limit: int = 1
         song = session.query(Song).filter_by(id=song_id).first()
 
         if not song:
-            return {
-                "status": "error",
-                "message": "歌曲不存在于数据库"
-            }
+            return {"status": "error", "message": "歌曲不存在于数据库"}
 
         # 基本信息
         result = {
@@ -386,7 +400,7 @@ def get_song_details(song_id: str, include_comments: bool = True, limit: int = 1
             "artists": [artist.name for artist in song.artists],
             "album": song.album.name if song.album else None,
             "lyric": song.lyric if song.lyric else None,
-            "duration_ms": song.duration_ms
+            "duration_ms": song.duration_ms,
         }
 
         # 统计信息
@@ -395,37 +409,45 @@ def get_song_details(song_id: str, include_comments: bool = True, limit: int = 1
 
         result["statistics"] = {
             "total_comments": total_comments,
-            "data_completeness": data_completeness
+            "data_completeness": data_completeness,
         }
 
         # 评论内容
         if include_comments:
             # 热门评论（按点赞数排序）
-            top_comments = session.query(Comment).filter_by(song_id=song_id)\
-                .order_by(Comment.liked_count.desc())\
-                .limit(min(50, limit)).all()
+            top_comments = (
+                session.query(Comment)
+                .filter_by(song_id=song_id)
+                .order_by(Comment.liked_count.desc())
+                .limit(min(50, limit))
+                .all()
+            )
 
             result["top_comments"] = [
                 {
                     "content": c.content,
                     "liked_count": c.liked_count,
                     "user": c.user_nickname,
-                    "timestamp": c.timestamp
+                    "timestamp": c.timestamp,
                 }
                 for c in top_comments
             ]
 
             # 最新评论（按时间排序）
-            recent_comments = session.query(Comment).filter_by(song_id=song_id)\
-                .order_by(Comment.timestamp.desc())\
-                .limit(min(20, limit)).all()
+            recent_comments = (
+                session.query(Comment)
+                .filter_by(song_id=song_id)
+                .order_by(Comment.timestamp.desc())
+                .limit(min(20, limit))
+                .all()
+            )
 
             result["recent_comments"] = [
                 {
                     "content": c.content,
                     "liked_count": c.liked_count,
                     "user": c.user_nickname,
-                    "timestamp": c.timestamp
+                    "timestamp": c.timestamp,
                 }
                 for c in recent_comments
             ]
@@ -433,10 +455,7 @@ def get_song_details(song_id: str, include_comments: bool = True, limit: int = 1
         return result
 
     except Exception as e:
-        return {
-            "status": "error",
-            "message": f"获取歌曲详情失败: {str(e)}"
-        }
+        return {"status": "error", "message": f"获取歌曲详情失败: {str(e)}"}
     finally:
         session.close()
 
@@ -465,14 +484,16 @@ def list_songs_in_database() -> list:
         for song in songs:
             comment_count = session.query(Comment).filter_by(song_id=song.id).count()
 
-            results.append({
-                "id": song.id,
-                "name": song.name,
-                "artists": [artist.name for artist in song.artists],
-                "album": song.album.name if song.album else None,
-                "comment_count": comment_count,
-                "has_lyric": bool(song.lyric)
-            })
+            results.append(
+                {
+                    "id": song.id,
+                    "name": song.name,
+                    "artists": [artist.name for artist in song.artists],
+                    "album": song.album.name if song.album else None,
+                    "comment_count": comment_count,
+                    "has_lyric": bool(song.lyric),
+                }
+            )
 
         return results
 

@@ -30,7 +30,7 @@ from dataclasses import dataclass, field
 # 路径设置
 current_dir = os.path.dirname(os.path.abspath(__file__))
 project_root = os.path.dirname(os.path.dirname(current_dir))
-netease_path = os.path.join(project_root, 'netease_cloud_music')
+netease_path = os.path.join(project_root, "netease_cloud_music")
 if netease_path not in sys.path:
     sys.path.insert(0, netease_path)
 
@@ -42,19 +42,15 @@ logger = logging.getLogger(__name__)
 # ==================== 配置 ====================
 
 # 三级采样目标
-LEVEL_TARGETS = {
-    "quick": 200,
-    "standard": 600,
-    "deep": 1000
-}
+LEVEL_TARGETS = {"quick": 200, "standard": 600, "deep": 1000}
 
 # 年份跨度策略
 YEAR_SPAN_STRATEGIES = {
     # (min_years, max_years): (offset_ratio, yearly_ratio)
-    "new": (0, 2, 1.0, 0.0),       # 新歌：100% offset
-    "medium": (3, 5, 0.2, 0.8),    # 中等新：20% offset + 80% 年份
-    "normal": (6, 10, 0.3, 0.7),   # 正常：30% offset + 70% 年份
-    "old": (11, 99, 0.3, 0.7),     # 老歌：30% offset + 70% 年份(限10年)
+    "new": (0, 2, 1.0, 0.0),  # 新歌：100% offset
+    "medium": (3, 5, 0.2, 0.8),  # 中等新：20% offset + 80% 年份
+    "normal": (6, 10, 0.3, 0.7),  # 正常：30% offset + 70% 年份
+    "old": (11, 99, 0.3, 0.7),  # 老歌：30% offset + 70% 年份(限10年)
 }
 
 MAX_YEARS_TO_SAMPLE = 10  # 老歌最多采10年
@@ -62,20 +58,21 @@ MAX_YEARS_TO_SAMPLE = 10  # 老歌最多采10年
 
 # ==================== 工具函数 ====================
 
+
 def get_session():
     """获取数据库session"""
-    db_path = os.path.join(project_root, 'data', 'music_data_v2.db')
-    return init_db(f'sqlite:///{db_path}')
+    db_path = os.path.join(project_root, "data", "music_data_v2.db")
+    return init_db(f"sqlite:///{db_path}")
 
 
 def get_cookie() -> Optional[str]:
     """加载cookie"""
-    cookie_path = os.path.join(project_root, 'netease_cloud_music', 'cookie.txt')
+    cookie_path = os.path.join(project_root, "netease_cloud_music", "cookie.txt")
     if os.path.exists(cookie_path):
         try:
-            with open(cookie_path, 'r', encoding='utf-8') as f:
+            with open(cookie_path, "r", encoding="utf-8") as f:
                 cookie = f.read().strip()
-                if cookie and not cookie.startswith('#'):
+                if cookie and not cookie.startswith("#"):
                     return cookie
         except:
             pass
@@ -113,7 +110,9 @@ def get_publish_year(song_id: str) -> int:
     return NETEASE_LAUNCH_YEAR
 
 
-def calculate_sampling_params(target: int, years_span: int, api_total: int) -> Dict[str, int]:
+def calculate_sampling_params(
+    target: int, years_span: int, api_total: int
+) -> Dict[str, Any]:
     """
     计算采样参数
 
@@ -140,7 +139,7 @@ def calculate_sampling_params(target: int, years_span: int, api_total: int) -> D
             "recent": min(api_total, 1000),  # offset上限约1000
             "per_year": 0,
             "effective_years": 0,
-            "strategy": "cold_song"
+            "strategy": "cold_song",
         }
 
     # 边缘2: 新歌(≤2年) → 100% offset
@@ -150,7 +149,7 @@ def calculate_sampling_params(target: int, years_span: int, api_total: int) -> D
             "recent": remaining,
             "per_year": 0,
             "effective_years": 0,
-            "strategy": "new_song"
+            "strategy": "new_song",
         }
 
     # 确定策略
@@ -179,40 +178,43 @@ def calculate_sampling_params(target: int, years_span: int, api_total: int) -> D
         "recent": recent,
         "per_year": per_year,
         "effective_years": effective_years,
-        "strategy": strategy
+        "strategy": strategy,
     }
 
 
 # ==================== 采样函数 ====================
 
+
 def sample_hot_comments(song_id: str, existing_ids: Set[str]) -> List[Dict]:
     """采样热评（独立渠道，平台精选）"""
     url = f"http://music.163.com/api/v1/resource/comments/R_SO_4_{song_id}?limit=20&offset=0"
-    headers = {'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64)'}
+    headers = {"User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64)"}
 
     cookie = get_cookie()
     if cookie:
-        headers['Cookie'] = cookie
+        headers["Cookie"] = cookie
 
     result = []
     try:
         resp = requests.get(url, headers=headers, timeout=10)
         data = resp.json()
 
-        if data.get('code') != 200:
+        if data.get("code") != 200:
             return result
 
-        for c in data.get('hotComments', [])[:15]:
-            cid = str(c.get('commentId', ''))
+        for c in data.get("hotComments", [])[:15]:
+            cid = str(c.get("commentId", ""))
             if cid and cid not in existing_ids:
-                result.append({
-                    'comment_id': cid,
-                    'content': c.get('content', ''),
-                    'liked_count': c.get('likedCount', 0),
-                    'timestamp': c.get('time', 0),
-                    'user_nickname': c.get('user', {}).get('nickname', ''),
-                    'source': 'hot'
-                })
+                result.append(
+                    {
+                        "comment_id": cid,
+                        "content": c.get("content", ""),
+                        "liked_count": c.get("likedCount", 0),
+                        "timestamp": c.get("time", 0),
+                        "user_nickname": c.get("user", {}).get("nickname", ""),
+                        "source": "hot",
+                    }
+                )
 
         logger.info(f"[v6] 热评: {len(result)}条")
     except Exception as e:
@@ -221,14 +223,16 @@ def sample_hot_comments(song_id: str, existing_ids: Set[str]) -> List[Dict]:
     return result
 
 
-def sample_recent_comments(song_id: str, existing_ids: Set[str], limit: int) -> List[Dict]:
+def sample_recent_comments(
+    song_id: str, existing_ids: Set[str], limit: int
+) -> List[Dict]:
     """采样最新评论（offset翻页）"""
     url = f"http://music.163.com/api/v1/resource/comments/R_SO_4_{song_id}"
-    headers = {'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64)'}
+    headers = {"User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64)"}
 
     cookie = get_cookie()
     if cookie:
-        headers['Cookie'] = cookie
+        headers["Cookie"] = cookie
 
     result = []
     seen_ids = set(existing_ids)
@@ -240,28 +244,32 @@ def sample_recent_comments(song_id: str, existing_ids: Set[str], limit: int) -> 
             break
 
         try:
-            resp = requests.get(f"{url}?limit={page_size}&offset={offset}", headers=headers, timeout=10)
+            resp = requests.get(
+                f"{url}?limit={page_size}&offset={offset}", headers=headers, timeout=10
+            )
             data = resp.json()
 
-            if data.get('code') != 200:
+            if data.get("code") != 200:
                 break
 
-            comments = data.get('comments', [])
+            comments = data.get("comments", [])
             if not comments:
                 break
 
             for c in comments:
-                cid = str(c.get('commentId', ''))
+                cid = str(c.get("commentId", ""))
                 if cid and cid not in seen_ids:
                     seen_ids.add(cid)
-                    result.append({
-                        'comment_id': cid,
-                        'content': c.get('content', ''),
-                        'liked_count': c.get('likedCount', 0),
-                        'timestamp': c.get('time', 0),
-                        'user_nickname': c.get('user', {}).get('nickname', ''),
-                        'source': 'recent'
-                    })
+                    result.append(
+                        {
+                            "comment_id": cid,
+                            "content": c.get("content", ""),
+                            "liked_count": c.get("likedCount", 0),
+                            "timestamp": c.get("time", 0),
+                            "user_nickname": c.get("user", {}).get("nickname", ""),
+                            "source": "recent",
+                        }
+                    )
 
             time.sleep(0.3)
 
@@ -278,7 +286,7 @@ def sample_yearly_comments(
     existing_ids: Set[str],
     start_year: int,
     effective_years: int,
-    per_year: int
+    per_year: int,
 ) -> tuple:
     """
     采样年份评论（cursor年份跳转）
@@ -288,16 +296,16 @@ def sample_yearly_comments(
     """
     from netease_cloud_music.utils import create_weapi_params
 
-    url = 'https://music.163.com/weapi/comment/resource/comments/get?csrf_token='
+    url = "https://music.163.com/weapi/comment/resource/comments/get?csrf_token="
     headers = {
-        'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64)',
-        'Content-Type': 'application/x-www-form-urlencoded',
-        'Referer': 'https://music.163.com/',
+        "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64)",
+        "Content-Type": "application/x-www-form-urlencoded",
+        "Referer": "https://music.163.com/",
     }
 
     cookie = get_cookie()
     if cookie:
-        headers['Cookie'] = cookie
+        headers["Cookie"] = cookie
 
     result = []
     seen_ids = set(existing_ids)
@@ -336,26 +344,26 @@ def sample_yearly_comments(
                 break
 
             payload = {
-                'rid': f'R_SO_4_{song_id}',
-                'threadId': f'R_SO_4_{song_id}',
-                'pageNo': '1',
-                'pageSize': '20',
-                'cursor': cursor,
-                'offset': '0',
-                'orderType': '1',
-                'csrf_token': ''
+                "rid": f"R_SO_4_{song_id}",
+                "threadId": f"R_SO_4_{song_id}",
+                "pageNo": "1",
+                "pageSize": "20",
+                "cursor": cursor,
+                "offset": "0",
+                "orderType": "1",
+                "csrf_token": "",
             }
 
             try:
                 params = create_weapi_params(payload)
-                data = {'params': params['params'], 'encSecKey': params['encSecKey']}
+                data = {"params": params["params"], "encSecKey": params["encSecKey"]}
                 resp = requests.post(url, data=data, headers=headers, timeout=15)
                 res_data = resp.json()
 
-                if res_data.get('code') != 200:
+                if res_data.get("code") != 200:
                     break
 
-                comments = res_data.get('data', {}).get('comments', [])
+                comments = res_data.get("data", {}).get("comments", [])
                 if not comments:
                     break
 
@@ -363,8 +371,8 @@ def sample_yearly_comments(
                     if year_count >= per_year:
                         break
 
-                    cid = str(c.get('commentId', ''))
-                    c_time = c.get('time', 0)
+                    cid = str(c.get("commentId", ""))
+                    c_time = c.get("time", 0)
 
                     if not cid or cid in seen_ids:
                         continue
@@ -379,18 +387,20 @@ def sample_yearly_comments(
                     year_dist[year] += 1
                     year_count += 1
 
-                    result.append({
-                        'comment_id': cid,
-                        'content': c.get('content', ''),
-                        'liked_count': c.get('likedCount', 0),
-                        'timestamp': c_time,
-                        'user_nickname': c.get('user', {}).get('nickname', ''),
-                        'source': 'yearly'
-                    })
+                    result.append(
+                        {
+                            "comment_id": cid,
+                            "content": c.get("content", ""),
+                            "liked_count": c.get("likedCount", 0),
+                            "timestamp": c_time,
+                            "user_nickname": c.get("user", {}).get("nickname", ""),
+                            "source": "yearly",
+                        }
+                    )
 
                 # 更新cursor
                 if comments:
-                    cursor = str(comments[-1].get('time', 0))
+                    cursor = str(comments[-1].get("time", 0))
 
             except Exception as e:
                 logger.warning(f"[v6] 年份{year}采样异常: {e}")
@@ -411,7 +421,7 @@ def save_comments_to_db(song_id: str, comments: List[Dict]) -> int:
 
     try:
         for c in comments:
-            cid = c.get('comment_id')
+            cid = c.get("comment_id")
             if not cid:
                 continue
 
@@ -423,10 +433,10 @@ def save_comments_to_db(song_id: str, comments: List[Dict]) -> int:
                 new_comment = Comment(
                     comment_id=cid,
                     song_id=song_id,
-                    content=c.get('content', ''),
-                    liked_count=c.get('liked_count', 0),
-                    timestamp=c.get('timestamp', 0),
-                    user_nickname=c.get('user_nickname', ''),
+                    content=c.get("content", ""),
+                    liked_count=c.get("liked_count", 0),
+                    timestamp=c.get("timestamp", 0),
+                    user_nickname=c.get("user_nickname", ""),
                 )
                 session.add(new_comment)
                 saved += 1
@@ -446,11 +456,9 @@ def save_comments_to_db(song_id: str, comments: List[Dict]) -> int:
 
 # ==================== 主入口 ====================
 
+
 def sample_comments_v6(
-    song_id: str,
-    api_total: int,
-    level: str = "standard",
-    save_to_db: bool = True
+    song_id: str, api_total: int, level: str = "standard", save_to_db: bool = True
 ) -> Dict[str, Any]:
     """
     v6 简化版采样主入口
@@ -510,75 +518,94 @@ def sample_comments_v6(
 
     # 1. 热评
     hot_comments = sample_hot_comments(song_id, existing_ids)
-    existing_ids.update(c['comment_id'] for c in hot_comments)
+    existing_ids.update(c["comment_id"] for c in hot_comments)
 
     # 2. 最新评论
     recent_comments = []
     if params["recent"] > 0:
-        recent_comments = sample_recent_comments(song_id, existing_ids, params["recent"])
-        existing_ids.update(c['comment_id'] for c in recent_comments)
+        recent_comments = sample_recent_comments(
+            song_id, existing_ids, params["recent"]
+        )
+        existing_ids.update(c["comment_id"] for c in recent_comments)
 
     # 3. 年份评论
     yearly_comments = []
     year_dist = {}
     if params["per_year"] > 0 and params["effective_years"] > 0:
         yearly_comments, year_dist = sample_yearly_comments(
-            song_id, existing_ids, publish_year,
-            params["effective_years"], params["per_year"]
+            song_id,
+            existing_ids,
+            publish_year,
+            params["effective_years"],
+            params["per_year"],
         )
 
     elapsed = time.time() - start_time
 
     # 合并结果
     all_comments = hot_comments + recent_comments + yearly_comments
-    actual_total = len(all_comments)
+    fetched_total = len(all_comments)
 
     # 保存到数据库
     saved = 0
     if save_to_db and all_comments:
         saved = save_comments_to_db(song_id, all_comments)
 
+    db_count_after = db_count_before + saved
+
     # 计算高赞数量（structural维度需要）
-    high_likes_count = len([c for c in all_comments if c.get('liked_count', 0) >= 1000])
+    # 注意：这里统计的是“本轮抓到的样本”中的高赞数，DB里可能更多
+    high_likes_count = len([c for c in all_comments if c.get("liked_count", 0) >= 1000])
 
     result = {
         "status": "success",
         "level": level,
         "target": target,
-        "actual": actual_total,
-
+        # actual 表示 DB 可用于分析的总量（避免把“本轮新增”误读为总样本）
+        "actual": db_count_after,
+        "actual_new": saved,
+        "db": {"before": db_count_before, "after": db_count_after, "added": saved},
         "samples": {
             "hot": len(hot_comments),
             "recent": len(recent_comments),
             "yearly": len(yearly_comments),
-            "total": actual_total,
-            "saved_to_db": saved
+            # 兼容字段：total 仍表示本轮抓取的总条数
+            "total": fetched_total,
+            "saved_to_db": saved,
+            # 补充：本轮抓取/入库口径
+            "fetched": fetched_total,
+            "db_before": db_count_before,
+            "db_after": db_count_after,
         },
-
         "coverage": {
             "publish_year": publish_year,
             "years_span": years_span,
             "years_sampled": len(year_dist),
-            "year_distribution": year_dist
+            "year_distribution": year_dist,
         },
-
         "quality": {
             "high_likes_count": high_likes_count,
-            "sample_rate": f"{actual_total/api_total*100:.2f}%" if api_total > 0 else "N/A"
+            "sample_rate": f"{db_count_after / api_total * 100:.2f}%"
+            if api_total > 0
+            else "N/A",
         },
-
         "params_used": params,
         "time_spent": f"{elapsed:.1f}s",
-
-        "ai_guidance": _generate_guidance(level, target, actual_total, years_span, len(year_dist))
+        "ai_guidance": _generate_guidance(
+            level, target, db_count_after, years_span, len(year_dist), saved
+        ),
     }
 
-    logger.info(f"[v6] 采样完成: {actual_total}条, 耗时{elapsed:.1f}s")
+    logger.info(
+        f"[v6] 采样完成: fetched={fetched_total}, saved={saved}, db={db_count_before}->{db_count_after}, 耗时{elapsed:.1f}s"
+    )
 
     return result
 
 
-def _build_result_from_db(song_id: str, api_total: int, level: str, target: int, db_count: int) -> Dict:
+def _build_result_from_db(
+    song_id: str, api_total: int, level: str, target: int, db_count: int
+) -> Dict:
     """从数据库已有数据构建结果"""
     session = get_session()
     try:
@@ -601,49 +628,60 @@ def _build_result_from_db(song_id: str, api_total: int, level: str, target: int,
             "level": level,
             "target": target,
             "actual": db_count,
+            "actual_new": 0,
             "note": "using_existing_db_data",
-
+            "db": {"before": db_count, "after": db_count, "added": 0},
             "samples": {
                 "hot": 0,
                 "recent": 0,
                 "yearly": 0,
+                # 兼容字段：total 维持旧语义（此时=DB总量）
                 "total": db_count,
-                "saved_to_db": 0
+                "saved_to_db": 0,
+                "fetched": 0,
+                "db_before": db_count,
+                "db_after": db_count,
             },
-
             "coverage": {
                 "years_span": years_span,
                 "years_sampled": len(year_dist),
-                "year_distribution": dict(year_dist)
+                "year_distribution": dict(year_dist),
             },
-
             "quality": {
                 "high_likes_count": high_likes,
-                "sample_rate": f"{db_count/api_total*100:.2f}%" if api_total > 0 else "N/A"
+                "sample_rate": f"{db_count / api_total * 100:.2f}%"
+                if api_total > 0
+                else "N/A",
             },
-
-            "ai_guidance": {
-                "status": "sufficient",
-                "message": f"DB has {db_count} comments, ready for analysis",
-                "next_action": "get_analysis_signals_tool"
-            }
+            "ai_guidance": _generate_guidance(
+                level, target, db_count, years_span, len(year_dist), 0
+            ),
         }
     finally:
         session.close()
 
 
-def _generate_guidance(level: str, target: int, actual: int, years_span: int, years_sampled: int) -> Dict:
-    """生成AI引导"""
-    # 评估数据充足性
+def _generate_guidance(
+    level: str,
+    target: int,
+    actual: int,
+    years_span: int,
+    years_sampled: int,
+    added: int = 0,
+) -> Dict:
+    """生成AI引导（口径：actual=DB可用于分析的总量）"""
+    # 评估数据充足性（按DB总量，而不是“本轮抓取量”）
     if actual >= target * 0.9:
         status = "sufficient"
-        message = f"Got {actual}/{target} comments, ready for analysis"
+        message = (
+            f"DB now has {actual}/{target} comments (+{added} new), ready for analysis"
+        )
     elif actual >= target * 0.5:
         status = "acceptable"
-        message = f"Got {actual}/{target} comments, can analyze but may upgrade to deeper level"
+        message = f"DB now has {actual}/{target} comments (+{added} new), can analyze; consider upgrading"
     else:
         status = "insufficient"
-        message = f"Only got {actual}/{target} comments, recommend deeper sampling"
+        message = f"DB only has {actual}/{target} comments (+{added} new), recommend deeper sampling"
 
     # 年份覆盖评估
     if years_span <= 2:
@@ -660,12 +698,14 @@ def _generate_guidance(level: str, target: int, actual: int, years_span: int, ye
     else:
         next_action = "get_analysis_signals_tool (or upgrade level)"
         next_level = {"quick": "standard", "standard": "deep"}.get(level)
-        upgrade_option = f"sample_comments_tool(level='{next_level}')" if next_level else None
+        upgrade_option = (
+            f"sample_comments_tool(level='{next_level}')" if next_level else None
+        )
 
     return {
         "status": status,
         "message": message,
         "temporal_note": temporal_note,
         "next_action": next_action,
-        "upgrade_option": upgrade_option
+        "upgrade_option": upgrade_option,
     }

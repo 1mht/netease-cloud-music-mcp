@@ -11,7 +11,7 @@ from typing import Dict, List, Optional
 # 添加 netease_cloud_music 到 Python 路径
 current_dir = os.path.dirname(os.path.abspath(__file__))
 project_root = os.path.dirname(os.path.dirname(current_dir))
-netease_path = os.path.join(project_root, 'netease_cloud_music')
+netease_path = os.path.join(project_root, "netease_cloud_music")
 if netease_path not in sys.path:
     sys.path.insert(0, netease_path)
 
@@ -53,7 +53,7 @@ def search_songs(keyword: str, limit: int = 10):
         results = netease_search_songs(keyword, limit=limit, offset=0)
         return results if results else []
     except Exception as e:
-        print(f"[搜索错误] {e}")
+        print(f"[搜索错误] {e}", file=sys.stderr)
         return []
 
 
@@ -73,7 +73,7 @@ def format_search_results(results, keyword):
             "keyword": keyword,
             "count": 0,
             "message": "未找到相关歌曲",
-            "suggestion": "可以尝试：1) 简化关键词 2) 只搜歌名 3) 换个写法"
+            "suggestion": "可以尝试：1) 简化关键词 2) 只搜歌名 3) 换个写法",
         }
 
     # 生成唯一 session_id
@@ -81,10 +81,11 @@ def format_search_results(results, keyword):
 
     # 保存搜索结果到临时存储
     import time
+
     _search_sessions[session_id] = {
         "results": results,
         "keyword": keyword,
-        "timestamp": time.time()
+        "timestamp": time.time(),
     }
 
     # ===== Phase 2: 去中心化决策 - 提供元数据而非判断 =====
@@ -92,13 +93,17 @@ def format_search_results(results, keyword):
 
     choices = []
     for i, song in enumerate(results, 1):
-        artists = song.get('artists', ['未知'])
+        artists = song.get("artists", ["未知"])
         artists_str = ", ".join(artists)
-        album = song.get('album', '未知专辑')
+        album = song.get("album", "未知专辑")
 
         # 获取时长（转换为分:秒格式）
-        duration_ms = song.get('duration', 0)
-        duration_str = f"{duration_ms//60000}:{duration_ms%60000//1000:02d}" if duration_ms > 0 else "未知"
+        duration_ms = song.get("duration", 0)
+        duration_str = (
+            f"{duration_ms // 60000}:{duration_ms % 60000 // 1000:02d}"
+            if duration_ms > 0
+            else "未知"
+        )
 
         # 新格式：提供充分信息，让用户判断
         # 格式：序号. 歌名 - 艺术家 | 专辑:xxx | 时长:x:xx
@@ -130,7 +135,7 @@ def format_search_results(results, keyword):
 ❌ 不要自己选择第1首
 ❌ 不要判断"用户可能想要xxx"
 ❌ 不要在用户回复前调用confirm
-"""
+""",
     }
 
 
@@ -149,7 +154,7 @@ def confirm_song_selection(session_id: str, choice_number: int) -> dict:
         return {
             "status": "error",
             "message": f"无效的 session_id: {session_id}",
-            "suggestion": "请先调用 search_songs_tool 进行搜索"
+            "suggestion": "请先调用 search_songs_tool 进行搜索",
         }
 
     session = _search_sessions[session_id]
@@ -160,7 +165,7 @@ def confirm_song_selection(session_id: str, choice_number: int) -> dict:
         return {
             "status": "error",
             "message": f"选择超出范围，有效范围：1-{len(results)}",
-            "suggestion": f"请重新选择 1-{len(results)} 之间的数字"
+            "suggestion": f"请重新选择 1-{len(results)} 之间的数字",
         }
 
     # 获取选中的歌曲（转为0-based索引）
@@ -170,16 +175,16 @@ def confirm_song_selection(session_id: str, choice_number: int) -> dict:
     del _search_sessions[session_id]
 
     # v0.6.6: 添加next_step引导AI完成后续workflow
-    song_id = selected_song['id']
-    song_name = selected_song['name']
-    artists_str = ', '.join(selected_song.get('artists', ['未知']))
+    song_id = selected_song["id"]
+    song_name = selected_song["name"]
+    artists_str = ", ".join(selected_song.get("artists", ["未知"]))
 
     return {
         "status": "confirmed",
         "song_id": song_id,
         "song_name": song_name,
-        "artists": selected_song.get('artists', ['未知']),
-        "album": selected_song.get('album', '未知专辑'),
+        "artists": selected_song.get("artists", ["未知"]),
+        "album": selected_song.get("album", "未知专辑"),
         "full_info": selected_song,
         "message": f"✅ 已确认选择：{song_name} - {artists_str}",
         "next_step": f"""
@@ -199,5 +204,5 @@ def confirm_song_selection(session_id: str, choice_number: int) -> dict:
    → 已完成，可直接告知用户歌曲信息
 
 ⚠️ 大多数分析工具需要歌曲已入库，请遵循步骤1的流程
-"""  # v0.6.6: 引导AI理解正确的workflow
+""",  # v0.6.6: 引导AI理解正确的workflow
     }
