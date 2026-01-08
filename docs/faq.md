@@ -132,6 +132,32 @@
 
 ---
 
+### Q7.1: Claude Desktop 弹窗 “Tool result could not be submitted” 怎么办？
+
+**A**：这是 MCP 工具调用中常见的“工具结果回传失败/超时/连接中断”提示。
+
+- **如果只是偶尔弹一次，且后续工具还能正常使用**：一般可以忽略（Claude 的内部状态机可能短暂抖动，但已恢复）。
+- **如果频繁出现或伴随其他异常**：建议按下面思路排查。
+
+**什么时候需要处理（满足任一条建议排查）**：
+- 频繁出现，且工具调用没有返回结果/返回空
+- 紧接着出现 UUID / parent_message_uuid 相关报错
+- Claude 无法继续调用工具，或 MCP 进程退出
+
+**最常见原因**：
+1. **请求超时**：单次调用超过 Claude Desktop 的硬时间限制（常见 30–60 秒）。
+2. **连接中断**：Claude Desktop 与 MCP 进程的 STDIO 通道短暂断开、进程重启或被系统回收。
+3. **STDIO 被污染**：MCP 服务器向 stdout 输出了非 JSON-RPC 内容（例如 `print()`、第三方库初始化日志），导致协议解析失败。
+4. **返回体过大**：一次性返回太多内容（大量原始评论/超长文本），导致传输或解析失败。
+
+**排查/缓解建议**：
+- 缩小单次工作量：降低 `limit`，优先 `quick`，再逐步升级到 `standard/deep`。
+- 分步执行：把重型流程拆成多次轻量调用（如 search → confirm → sample → analysis）。
+- 查看日志：Windows `%APPDATA%\Claude\logs\`；并确认 `claude_desktop_config.json` 是严格 JSON（双引号）。
+- 如果持续出现：完全退出并重启 Claude Desktop，必要时重启 MCP server。
+
+---
+
 ### Q8: 提示缺少 Python 依赖？
 
 **A**: 确保已安装所有依赖：
